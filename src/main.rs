@@ -19,13 +19,17 @@ struct Args {
     #[clap(short, long, help = "Adds a path as a dependency")]
     depends: Vec<String>,
 
-    #[clap(short, long)]
+    #[clap(short, long, help = "Path to the folder to document")]
     folder: String,
 
-    #[clap(short, long)]
+    #[clap(
+        short,
+        long,
+        help = "The name of the library to use for quoting into the documentation"
+    )]
     nice_name: String,
 
-    #[clap(short, long, help = "The output folder")]
+    #[clap(short, long, help = "Path for the output folder")]
     output: String,
 
     #[clap(
