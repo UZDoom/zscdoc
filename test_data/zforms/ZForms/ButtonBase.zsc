@@ -1,0 +1,230 @@
+class ButtonAnimator : Animator abstract {
+	abstract void stateChange(ButtonBase elem, ButtonState old, ButtonState new, Object storage);
+	abstract void textChange(ButtonBase elem, String old, String new, Object storage);
+	abstract void textScaleChange(ButtonBase elem, double old, double new, Object storage);
+	abstract void textColorChange(ButtonBase elem, int old, int new, Object storage);
+	abstract void fontChange(ButtonBase elem, Font old, Font new, Object storage);
+	abstract void alignmentChange(ButtonBase elem, AlignType old, AlignType new, Object storage);
+
+	abstract void initialSetupDone(
+		ButtonBase elem,
+		AABB box,
+		String text,
+		double textScale,
+		int textColor,
+		Font font,
+		AlignType alignment,
+		ButtonState state,
+		Object storage
+	);
+}
+
+class BasicButtonAnimatorStorage {
+	BoxImage images[7];
+	Label label;
+}
+
+class BasicButtonAnimator : ButtonAnimator {
+	private BoxTextures textures[7];
+
+	static BasicButtonAnimator create(
+		BoxTextures offNothing,
+		BoxTextures offHover,
+		BoxTextures offClick,
+		BoxTextures onNothing,
+		BoxTextures onHover,
+		BoxTextures onClick,
+		BoxTextures disabled
+	) {
+		let ret = new("BasicButtonAnimator");
+		ret.textures[0] = offNothing;
+		ret.textures[1] = offHover;
+		ret.textures[2] = offClick;
+		ret.textures[3] = onNothing;
+		ret.textures[4] = onHover;
+		ret.textures[5] = onClick;
+		ret.textures[6] = disabled;
+		return ret;
+	}
+
+	override AnimatorSetupResult setupOnElement(ElementContainer elem) {
+		let button = ButtonBase(elem);
+		let storage = new("BasicButtonAnimatorStorage");
+		let result = AnimatorSetupResult.Create(storage);
+		let pos = elem.getPos();
+		let size = elem.getSize();
+		for (int i = 0; i < 7; i++) {
+			let img = textures[i] != NULL ? BoxImage.create((0, 0), size, textures[i]) : NULL;
+			if (img != NULL) {
+				img.hide();
+				result.elements.push(img);
+			}
+			storage.images[i] = img;
+		}
+		let label = Label.create((0, 0), size);
+		result.elements.push(label);
+		storage.label = label;
+		return result;
+	}
+
+	override void stateChange(ButtonBase elem, ButtonState old, ButtonState new, Object storage) {
+		let storage = BasicButtonAnimatorStorage(storage);
+		let oldIndex = old.getStateInt();
+		let newIndex = new.getStateInt();
+		if (storage.images[oldIndex] != NULL) storage.images[oldIndex].hide();
+		if (storage.images[newIndex] != NULL) storage.images[newIndex].show();
+	}
+	override void textChange(ButtonBase elem, String old, String new, Object storage) {
+		let storage = BasicButtonAnimatorStorage(storage);
+		storage.label.setText(new);
+	}
+	override void textScaleChange(ButtonBase elem, double old, double new, Object storage) {
+		let storage = BasicButtonAnimatorStorage(storage);
+		storage.label.setTextScale(new);
+	}
+	override void textColorChange(ButtonBase elem, int old, int new, Object storage) {
+		let storage = BasicButtonAnimatorStorage(storage);
+		storage.label.setTextColor(new);
+	}
+	override void fontChange(ButtonBase elem, Font old, Font new, Object storage) {
+		let storage = BasicButtonAnimatorStorage(storage);
+		storage.label.setFont(new);
+	}
+	override void alignmentChange(ButtonBase elem, AlignType old, AlignType new, Object storage) {
+		let storage = BasicButtonAnimatorStorage(storage);
+		storage.label.setAlignment(new);
+	}
+
+	override void boxChange(ElementContainer elem, AABB old, AABB new, Object storage) {
+		let storage = BasicButtonAnimatorStorage(storage);
+		for (int i = 0; i < 7; i++) {
+			if (storage.images[i] != NULL) storage.images[i].setBox((0, 0), new.size);
+		}
+		storage.label.setBox((0, 0), new.size);
+	}
+
+	override void initialSetupDone(
+		ButtonBase elem,
+		AABB box,
+		String text,
+		double textScale,
+		int textColor,
+		Font font,
+		AlignType alignment,
+		ButtonState state,
+		Object storage
+	) {
+		let storage = BasicButtonAnimatorStorage(storage);
+		for (int i = 0; i < 7; i++) {
+			if (storage.images[i] != NULL) storage.images[i].setBox((0, 0), box.size);
+		}
+		storage.label.setBox((0, 0), box.size);
+		let stateIndex = state.getStateInt();
+		storage.images[stateIndex].show();
+		storage.label.setText(text);
+		storage.label.setTextScale(textScale);
+		storage.label.setTextColor(textColor);
+		storage.label.setFont(font);
+		storage.label.setAlignment(alignment);
+	}
+}
+
+enum ButtonMouseState {
+	ButtonMouseState_Nothing,
+	ButtonMouseState_Hover,
+	ButtonMouseState_Clicked
+}
+enum ButtonLogicalState {
+	ButtonLogicalState_Off,
+	ButtonLogicalState_On
+}
+struct ButtonState {
+	bool disabled;
+	ButtonMouseState mouseState;
+	ButtonLogicalState logicalState;
+
+	int getStateInt() {
+		if (disabled) { return 6; }
+		else {
+			return int(logicalState) * 3 + int(mouseState);
+		}
+	}
+
+	void copyFrom(ButtonState from) {
+		self.disabled = from.disabled;
+		self.mouseState = from.mouseState;
+		self.logicalState = from.logicalState;
+	}
+
+	bool eq(ButtonState other) {
+		return
+			self.disabled == other.disabled &&
+			self.mouseState == other.mouseState &&
+			self.logicalState == other.logicalState;
+	}
+}
+
+class ButtonBase : ElementContainer {
+	protected void makeButtonState(ButtonState s, bool logicalOn, bool hover, bool clicked, bool disabled) {
+		s.mouseState =
+			clicked ? ButtonMouseState_Clicked :
+				(hover ? ButtonMouseState_Hover : ButtonMouseState_Nothing);
+		s.logicalState = logicalOn ? ButtonLogicalState_On : ButtonLogicalState_Off;
+		s.disabled = disabled;
+	}
+
+	protected Font fnt;
+	Font getFont() { return self.fnt; }
+	void setFont(Font fnt) {
+		let old = self.fnt;
+		if (fnt == NULL) {
+			self.fnt = smallfont;
+		}
+		else {
+			self.fnt = fnt;
+		}
+		let animator = ButtonAnimator(animator);
+		if (shouldUpdateAnimator()) { animator.fontChange(self, old, self.fnt, animStorage); }
+	}
+
+	protected string text;
+	string getText() { return self.text; }
+	void setText(string text) {
+		let old = self.text;
+		let animator = ButtonAnimator(animator);
+		self.text = text; if (shouldUpdateAnimator()) { animator.textChange(self, old, self.text, animStorage); }
+	}
+
+	protected int textColor;
+	int getTextColor() { return self.textColor; }
+	void setTextColor(int textColor) {
+		let old = self.textColor;
+		let animator = ButtonAnimator(animator);
+		self.textColor = textColor; if (shouldUpdateAnimator()) { animator.textColorChange(self, old, self.textColor, animStorage); }
+	}
+
+	protected double textScale;
+	double getTextScale() { return self.textScale; }
+	void setTextScale(double textScale) {
+		let old = self.textScale;
+		let animator = ButtonAnimator(animator);
+		self.textScale = textScale; if (shouldUpdateAnimator()) { animator.textScaleChange(self, old, self.textScale, animStorage); }
+	}
+
+	protected AlignType alignment;
+	AlignType getAlignment() { return self.alignment; }
+	void setAlignment(AlignType alignment) {
+		let old = self.alignment;
+		let animator = ButtonAnimator(animator);
+		self.alignment = alignment; if (shouldUpdateAnimator()) { animator.alignmentChange(self, old, self.alignment, animStorage); }
+	}
+		
+	protected ButtonState curButtonState;
+	void getCurButtonState(ButtonState o) { o.copyFrom(self.curButtonState); }
+	protected void setCurButtonState(ButtonState curButtonState) {
+		ButtonState old; old.copyFrom(self.curButtonState);
+		let animator = ButtonAnimator(animator);
+		self.curButtonState.copyFrom(curButtonState);
+		if (shouldUpdateAnimator()) { animator.stateChange(self, old, self.curButtonState, animStorage); }
+	}
+}

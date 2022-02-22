@@ -1,0 +1,509 @@
+class SliderAnimator : Animator abstract {
+	abstract void lowChange(Slider elem, double old, double new, Object storage);
+	abstract void highChange(Slider elem, double old, double new, Object storage);
+	abstract void stepChange(Slider elem, double old, double new, Object storage);
+	abstract void valueChange(Slider elem, double old, double new, Object storage);
+	abstract void handleSizeChange(Slider elem, double old, double new, Object storage);
+	abstract void handleStateChange(
+		Slider elem, SliderHandleState old, SliderHandleState new, Object storage
+	);
+	abstract void verticalChange(Slider elem, bool old, bool new, Object storage);
+
+	abstract void initialSetupDone(
+		Slider elem,
+		AABB box,
+		double low,
+		double high,
+		double step,
+		double value,
+		double handleSize,
+		SliderHandleState handleState,
+		bool vertical,
+		Object storage
+	);
+}
+
+class BasicSliderAnimatorStorage {
+	BoxImage background;
+	BoxImage handles[3];
+
+	double scale;
+	double bias;
+
+	double drawHandleSize;
+}
+
+class BasicSliderAnimator : SliderAnimator {
+	private BoxTextures backgroundTexture;
+	private BoxTextures handleTextures[3];
+
+	static BasicSliderAnimator create(
+		BoxTextures backgroundTexture,
+		BoxTextures handleInactive,
+		BoxTextures handleHover,
+		BoxTextures handleClick
+	) {
+		let ret = new("BasicSliderAnimator");
+		ret.backgroundTexture = backgroundTexture;
+		ret.handleTextures[0] = handleInactive;
+		ret.handleTextures[1] = handleHover;
+		ret.handleTextures[2] = handleClick;
+		return ret;
+	}
+
+	override AnimatorSetupResult setupOnElement(ElementContainer elem) {
+		let button = ButtonBase(elem);
+		let storage = new("BasicSliderAnimatorStorage");
+		let result = AnimatorSetupResult.Create(storage);
+		let pos = elem.getPos();
+		let size = elem.getSize();
+		let img = backgroundTexture != NULL ? BoxImage.create((0, 0), size, backgroundTexture) : NULL;
+		if (img != NULL) {
+			result.elements.push(img);
+		}
+		storage.background = img;
+		for (int i = 0; i < 3; i++) {
+			let img = handleTextures[i] != NULL ? BoxImage.create((0, 0), size, handleTextures[i]) : NULL;
+			if (img != NULL) {
+				img.hide();
+				result.elements.push(img);
+			}
+			storage.handles[i] = img;
+		}
+		return result;
+	}
+
+	void recalculateScaleBias(BasicSliderAnimatorStorage storage, double low, double high) {
+		if (low == high) {
+			storage.scale = 0.0;
+			storage.bias = 0.0;
+		} else {
+			storage.scale = 1 / (high - low);
+			storage.bias = -low / (high - low);
+		}
+	}
+
+	void recalculateDrawHandleSize(
+		BasicSliderAnimatorStorage storage,
+		AABB box,
+		double low,
+		double high,
+		double step,
+		double handleSize,
+		bool vertical
+	) {
+		let mainAxisSize = vertical ? box.size.y : box.size.x;
+		let subAxisSize = vertical ? box.size.x : box.size.y;
+		if (handleSize <= 0.0) {
+			if (step == 0.0) {
+				storage.drawHandleSize = subAxisSize;
+			}
+			else {
+				let ratio = (high - low) / step + 1;
+				storage.drawHandleSize = 1.0 / ratio * mainAxisSize;
+			}
+		}
+		else {
+			storage.drawHandleSize = handleSize;
+		}
+	}
+
+	void recalculateHandlePosition(
+		BasicSliderAnimatorStorage storage, AABB box, double value, bool vertical
+	) {
+		let t = storage.scale * value + storage.bias;
+		Vector2 newPos; Vector2 newSize;
+		if (vertical) {
+			newPos = (0.0, t * (box.size.y - storage.drawHandleSize));
+			newSize = (box.size.x, storage.drawHandleSize);
+		} else {
+			newPos = (t * (box.size.x - storage.drawHandleSize), 0);
+			newSize = (storage.drawHandleSize, box.size.y);
+		}
+		for (int i = 0; i < 3; i++) {
+			storage.handles[i].setBox(newPos, newSize);
+		}
+	}
+
+	override void boxChange(ElementContainer elem, AABB old, AABB new, Object storage) {
+		let elem = Slider(elem);
+		let storage = BasicSliderAnimatorStorage(storage);
+		let vertical = elem.getVertical();
+
+		storage.background.setBox((0, 0), new.size);
+		recalculateDrawHandleSize(
+			storage, new, elem.getLow(), elem.getHigh(), elem.getStep(), elem.getHandleSize(), vertical
+		);
+		recalculateHandlePosition(storage, new, elem.getValue(), vertical);
+	}
+
+	override void lowChange(Slider elem, double old, double new, Object storage) {
+		let storage = BasicSliderAnimatorStorage(storage);
+
+		AABB box; elem.getBox(box);
+		let low = new;
+		let high = elem.getHigh();
+		let vertical = elem.getVertical();
+
+		recalculateScaleBias(storage, low, high);
+		recalculateDrawHandleSize(storage, box, low, high, elem.getStep(), elem.getHandleSize(), vertical);
+		recalculateHandlePosition(storage, box, elem.getValue(), vertical);
+	}
+
+	override void highChange(Slider elem, double old, double new, Object storage) {
+		let storage = BasicSliderAnimatorStorage(storage);
+
+		AABB box; elem.getBox(box);
+		let low = elem.getLow();
+		let high = new;
+		let vertical = elem.getVertical();
+
+		recalculateScaleBias(storage, low, high);
+		recalculateDrawHandleSize(storage, box, low, high, elem.getStep(), elem.getHandleSize(), elem);
+		recalculateHandlePosition(storage, box, elem.getValue(), elem);
+	}
+
+	override void stepChange(Slider elem, double old, double new, Object storage) {
+		let storage = BasicSliderAnimatorStorage(storage);
+
+		AABB box; elem.getBox(box);
+		recalculateDrawHandleSize(
+			storage, box, elem.getLow(), elem.getHigh(), new, elem.getHandleSize(), elem.getVertical()
+		);
+	}
+
+	override void valueChange(Slider elem, double old, double new, Object storage) {
+		let storage = BasicSliderAnimatorStorage(storage);
+
+		AABB box; elem.getBox(box);
+		recalculateHandlePosition(storage, box, new, elem.getVertical());
+	}
+
+	override void handleSizeChange(Slider elem, double old, double new, Object storage) {
+		let storage = BasicSliderAnimatorStorage(storage);
+
+		AABB box; elem.getBox(box);
+		let vertical = elem.getVertical();
+		recalculateDrawHandleSize(storage, box, elem.getLow(), elem.getHigh(), elem.getStep(), new, vertical);
+		recalculateHandlePosition(storage, box, elem.getValue(), vertical);
+	}
+
+	override void handleStateChange(
+		Slider elem, SliderHandleState old, SliderHandleState new, Object storage
+	) {
+		let storage = BasicSliderAnimatorStorage(storage);
+		
+		storage.handles[old].hide();
+		storage.handles[new].show();
+	}
+
+	override void verticalChange(Slider elem, bool old, bool new, Object storage) {
+		let storage = BasicSliderAnimatorStorage(storage);
+		
+		AABB box; elem.getBox(box);
+		recalculateDrawHandleSize(
+			storage, box, elem.getLow(), elem.getHigh(), elem.getStep(), elem.getHandleSize(), new
+		);
+		recalculateHandlePosition(storage, box, elem.getValue(), new);
+	}
+
+	override void initialSetupDone(
+		Slider elem,
+		AABB box,
+		double low,
+		double high,
+		double step,
+		double value,
+		double handleSize,
+		SliderHandleState handleState,
+		bool vertical,
+		Object storage
+	) {
+		let storage = BasicSliderAnimatorStorage(storage);
+		
+		recalculateScaleBias(storage, low, high);
+		recalculateDrawHandleSize(storage, box, low, high, step, handleSize, vertical);
+		recalculateHandlePosition(storage, box, value, vertical);
+
+		storage.handles[handleState].show();
+	}
+}
+
+enum SliderHandleState {
+	SliderHandleState_Normal,
+	SliderHandleState_Hover,
+	SliderHandleState_Click
+}
+
+class Slider : ElementContainer {
+	protected double low, high, step;
+	double getLow() { return self.low; }
+	void setLow(double low) {
+		let old = self.low;
+		self.low = low;
+		swapIfNecessary();
+		let animator = SliderAnimator(animator);
+		if (shouldUpdateAnimator()) { animator.lowChange(self, old, self.low, animStorage); }
+		finalizeValue(value);
+	}
+	double getHigh() { return self.high; }
+	void setHigh(double high) {
+		let old = self.high;
+		self.high = high;
+		swapIfNecessary();
+		let animator = SliderAnimator(animator);
+		if (shouldUpdateAnimator()) { animator.highChange(self, old, self.high, animStorage); }
+		finalizeValue(value);
+	}
+	double getStep() { return self.step; }
+	void setStep(double step) {
+		let old = self.step;
+		self.step = max(step, 0.0);
+		let animator = SliderAnimator(animator);
+		if (shouldUpdateAnimator()) { animator.stepChange(self, old, self.step, animStorage); }
+	}
+
+	protected SliderHandleState handleState;
+	SliderHandleState getHandleState() { return self.handleState; }
+	protected void setHandleState(SliderHandleState handleState) {
+		let old = self.handleState;
+		self.handleState = handleState;
+		let animator = SliderAnimator(animator);
+		if (shouldUpdateAnimator()) { animator.handleStateChange(self, old, self.handleState, animStorage); }
+	}
+
+	void finalizeValue(double old) {
+		self.value = clamp(self.value, low, high);
+		if (cmdHandler != NULL && old != value) {
+			cmdHandler.sliderChanged(self, command);
+		}
+		let animator = SliderAnimator(animator);
+		if (shouldUpdateAnimator()) { animator.valueChange(self, old, self.value, animStorage); }
+	}
+
+	void swapIfNecessary() {
+		if (low > high) {
+			let tmp = low;
+			low = high;
+			high = tmp;
+		}
+	}
+
+	protected double value;
+	double getValue() { return self.value; }
+	void setValue(double value) {
+		let old = self.value;
+		self.value = value;
+		finalizeValue(old);
+	}
+
+	protected double handleSize;
+	double getHandleSize() { return self.handleSize; }
+	void setHandleSize(double handleSize) {
+		let old = self.handleSize;
+		self.handleSize = handleSize;
+		let animator = SliderAnimator(animator);
+		if (shouldUpdateAnimator()) { animator.handleSizeChange(self, old, self.handleSize, animStorage); }
+	}
+
+	protected bool vertical;
+	bool getVertical() { return self.vertical; }
+	void setVertical(bool vertical) {
+		let old = self.vertical;
+		self.vertical = vertical;
+		let animator = SliderAnimator(animator);
+		if (shouldUpdateAnimator()) { animator.verticalChange(self, old, self.vertical, animStorage); }
+	}
+
+	protected bool dragHandle;
+	bool getDragHandle() { return self.dragHandle; }
+	void setDragHandle(bool dragHandle) {
+		self.dragHandle = dragHandle;
+	}
+
+	double getDrawHandleSize() {
+		let mainAxisSize = vertical ? self.box.size.y : self.box.size.x;
+		let subAxisSize = vertical ? self.box.size.x : self.box.size.y;
+		if (handleSize <= 0.0) {
+			if (step == 0.0) {
+				return subAxisSize;
+			}
+			else {
+				let ratio = (high - low) / step + 1;
+				return 1.0 / ratio * mainAxisSize;
+			}
+		}
+		else {
+			return handleSize;
+		}
+	}
+
+	protected double drawHandleDragOffset;
+	protected bool clicking;
+	protected bool hover;
+
+	void config(
+		double low, double high, double value, double step, double handleSize,
+		SliderAnimator animator, bool vertical = false, bool dragHandle = false,
+		Handler cmdHandler = NULL, string command = ""
+	) {
+		setAnimator(animator);
+		setLow(low);
+		setHigh(high);
+		setStep(step);
+		setValue(value);
+		setHandleSize(handleSize);
+		setHandleState(SliderHandleState_Normal);
+		setVertical(vertical);
+		setDragHandle(dragHandle);
+		setAlpha(1.0);
+		self.cmdHandler = cmdHandler;
+		self.command = command;
+
+		self.doneInitialSetup = true;
+		if (self.animator != NULL) {
+			let a = SliderAnimator(self.animator);
+			a.initialSetupDone(
+				self,
+				self.box,
+				self.low,
+				self.high,
+				self.step,
+				self.value,
+				self.handleSize,
+				self.handleState,
+				self.vertical,
+				self.animStorage
+			);
+		}
+	}
+
+	static Slider create(
+		Vector2 pos, Vector2 size,
+		double low, double high, double value, double step, double handleSize,
+		SliderAnimator animator, bool vertical = false, bool dragHandle = false,
+		Handler cmdHandler = NULL, string command = ""
+	) {
+		let ret = new("Slider");
+
+		ret.setBox(pos, size);
+		ret.config(low, high, value, step, handleSize, animator, vertical, dragHandle, cmdHandler, command);
+
+		return ret;
+	}
+
+	void getCollisionBox(AABB collisionBox) {
+		if (dragHandle) {
+			let t = (high == low) ? 0.0 : ((value - low) / (high - low));
+			Vector2 newPos; Vector2 newSize;
+			let drawHandleSize = getDrawHandleSize();
+			AABB tmp;
+			if (vertical) {
+				tmp.pos = (0.0, t * (box.size.y - drawHandleSize));
+				tmp.size = (box.size.x, drawHandleSize);
+			} else {
+				tmp.pos = (t * (box.size.x - drawHandleSize), 0);
+				tmp.size = (drawHandleSize, box.size.y);
+			}
+			aabbToScreen(collisionBox, tmp);
+		} else {
+			boxToScreen(collisionBox);
+		}
+	}
+
+	override void drawer() {
+		AABB collisionBox; getCollisionBox(collisionBox);
+		let mousePos = getGlobalStore().mousePos;
+		let needsToCheck = !mouseBlock && !getHoverBlock() && isEnabled();
+		hover =
+			clicking
+				? true
+				: !mouseBlock && !getHoverBlock() && isEnabled() && collisionBox.pointCollides(mousePos);
+
+		if (clicking) {
+			AABB screenBox; boxToScreen(screenBox);
+			let diff = mousePos - screenBox.pos;
+			diff /= getScale();
+			if (vertical) {
+				diff.y -= drawHandleDragOffset;
+			} else {
+				diff.x -= drawHandleDragOffset;
+			}
+			let t = 0.0;
+			if (vertical) {
+				t = diff.y / (box.size.y - getDrawHandleSize());
+			} else {
+				t = diff.x / (box.size.x - getDrawHandleSize());
+			}
+			t = clamp(t, 0.0, 1.0);
+			let newVal = (high - low) * t;
+			if (step != 0.0) {
+				newVal /= step;
+				newVal = round(newVal);
+				newVal *= step;
+			}
+			setValue(low + newVal);
+		}
+
+		let t = (high == low) ? 0.0 : ((value - low) / (high - low));
+		let s =
+			clicking
+				? SliderHandleState_Click
+				: hover
+					? SliderHandleState_Hover
+					: SliderHandleState_Normal;
+
+		if (handleState != s) {
+			setHandleState(s);
+		}
+
+		Super.drawer();
+	}
+
+	override bool onNavEvent(NavEventType type, bool fromController) {
+		if (isEnabled() && isFocused()) {
+			let newStep = step;
+			if (step == 0.0) {
+				newStep = (high - low) / 25.0;
+			}
+			let oldVal = value;
+			switch (type) {
+			case NavEventType_Left: {
+				setValue(value - newStep);
+				return true;
+			}
+			case NavEventType_Right: {
+				setValue(value + newStep);
+				return true;
+			}
+			}
+		}
+		return false;
+	}
+
+	override bool onUIEvent(UiEvent ev) {
+		if (ev.type == UIEvent.Type_LButtonDown) {
+			if (hover) {
+				clicking = true;
+				if (dragHandle && step == 0.0) {
+					AABB collisionBox; getCollisionBox(collisionBox);
+					let mousePos = getGlobalStore().mousePos;
+					let diff = mousePos - collisionBox.pos;
+					if (vertical) {
+						drawHandleDragOffset = diff.y;
+					} else {
+						drawHandleDragOffset = diff.x;
+					}
+				} else {
+					drawHandleDragOffset = getDrawHandleSize() / 2;
+				}
+				setHoverBlock(self);
+			}
+		}
+		else if (ev.type == UIEvent.Type_LButtonUp) {
+			clicking = false;
+			setHoverBlock(NULL);
+		}
+		return false;
+	}
+}

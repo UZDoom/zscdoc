@@ -1,0 +1,17 @@
+class AnimatorSetupResult {
+	Object localStorage;
+	Array<Element> elements;
+
+	static AnimatorSetupResult create(Object localStorage) {
+		let ret = new("AnimatorSetupResult");
+		ret.localStorage = localStorage;
+		return ret;
+	}
+}
+
+class Animator abstract ui {
+	abstract AnimatorSetupResult setupOnElement(ElementContainer elem);
+	virtual void tick() {}
+
+	abstract void boxChange(ElementContainer elem, AABB old, AABB new, Object storage);
+}

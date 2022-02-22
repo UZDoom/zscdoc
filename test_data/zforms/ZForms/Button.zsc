@@ -1,0 +1,134 @@
+class Button : ButtonBase {
+	protected bool hover;
+	protected bool click;
+
+	protected int holdTicInterval;
+	int getHoldTicInterval() { return self.holdTicInterval; }
+	void setHoldTicInterval(int holdTicInterval) { self.holdTicInterval = holdTicInterval; }
+
+	protected int currentHoldTicsRemaining;
+
+	void config(
+		string text = "", Handler cmdHandler = NULL, string command = "",
+		ButtonAnimator animator = NULL,
+		Font fnt = NULL, double textScale = 1, int textColor = Font.CR_WHITE,
+		int holdInterval = -1, AlignType alignment = AlignType_Center
+	) {
+		setAnimator(animator);
+
+		setFont(fnt);
+		setHoldTicInterval(holdInterval);
+		setText(text);
+		setTextScale(textScale);
+		setTextColor(textColor);
+		setAlignment(alignment);
+		ButtonState initial;
+		setCurButtonState(initial);
+		setAlpha(1.0);
+
+		self.cmdHandler = cmdHandler;
+		self.command = command;
+	}
+
+	static Button create(
+		Vector2 pos, Vector2 size, string text = "", Handler cmdHandler = NULL, string command = "",
+		ButtonAnimator animator = NULL, Font fnt = NULL, double textScale = 1, int textColor = Font.CR_WHITE,
+		int holdInterval = -1, AlignType alignment = AlignType_Center
+	) {
+		let ret = new('Button');
+
+		ret.config(text, cmdHandler, command, animator, fnt, textScale, textColor, holdInterval, alignment);
+		ret.setBox(pos, size);
+		ret.doneInitialSetup = true;
+		if (ret.animator != NULL) {
+			let a = ButtonAnimator(ret.animator);
+			a.initialSetupDone(
+				ret,
+				ret.box,
+				ret.text,
+				ret.textScale,
+				ret.textColor,
+				ret.fnt,
+				ret.alignment,
+				ret.curButtonState,
+				ret.animStorage
+			);
+		}
+
+		return ret;
+	}
+
+	override void ticker() {
+		if (!isEnabled()) {
+			currentHoldTicsRemaining = 0;
+			return;
+		}
+		if (holdTicInterval == -1) {
+			currentHoldTicsRemaining = 0;
+			return;
+		}
+
+		if (click && currentHoldTicsRemaining <= 0) {
+			if (cmdHandler) {
+				cmdHandler.buttonHeldCommand(self, command);
+			}
+			currentHoldTicsRemaining = holdTicInterval;
+		}
+		else if (click && currentHoldTicsRemaining > 0) {
+			currentHoldTicsRemaining--;
+		}
+		else if (!click && currentHoldTicsRemaining != 0) {
+			currentHoldTicsRemaining = 0;
+		}
+	}
+
+	override bool handleMousePosition(bool mouseBlock, Vector2 mousePos) {
+		AABB screenBox; boxToScreen(screenBox);
+		hover = !mouseBlock && !getHoverBlock() && screenBox.pointCollides(mousePos);
+		return false;
+	}
+
+	override bool onNavEvent(NavEventType type, bool fromController) {
+		if (isEnabled() && isFocused() && type == NavEventType_Confirm && holdTicInterval == -1) {
+			if (cmdHandler != NULL) cmdHandler.buttonClickCommand(self, command);
+			return true;
+		}
+		return false;
+	}
+
+	override void drawer() {
+		ButtonState s;
+		makeButtonState(s, false, !getHoverBlock() && hover, click, !isEnabled());
+		if (!self.curButtonState.eq(s)) { setCurButtonState(s); }
+		Super.drawer();
+	}
+
+	override bool onUIEvent(UiEvent ev) {
+		// if the player's clicked, and their mouse is in the right place, set the state accordingly
+		if (ev.type == UIEvent.Type_LButtonDown) {
+			let mousePos = getGlobalStore().mousePos;
+			AABB screenBox; boxToScreen(screenBox);
+			if (!mouseBlock && isEnabled() && screenBox.pointCollides(mousePos)) {
+				if (cmdHandler && holdTicInterval >= 0) {
+					cmdHandler.buttonClickCommand(self, command);
+					currentHoldTicsRemaining = holdTicInterval;
+				}
+				click = true;
+				setHoverBlock(self);
+			}
+		}
+		// if the player's releasing, check if their mouse is still in the correct range and trigger method if it was
+		else if (ev.type == UIEvent.Type_LButtonUp) {
+			let mousePos = getGlobalStore().mousePos;
+			AABB screenBox; boxToScreen(screenBox);
+			if (screenBox.pointCollides(mousePos) && click) {
+				if (cmdHandler && holdTicInterval == -1) {
+					cmdHandler.buttonClickCommand(self, command);
+				}
+			}
+			click = false;
+			setHoverBlock(NULL);
+		}
+		return false;
+	}
+}

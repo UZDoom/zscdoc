@@ -1,0 +1,161 @@
+/// this is entire-library level
+const HI = "hello";
+
+/// A button which can be toggled on and off.
+class ToggleButton : ButtonBase {
+	/// hi!!
+	protected bool on;
+
+	protected bool hover;
+	protected bool click;
+
+	/// - markdown
+	const HI = "woah";
+
+	static const int[] CRAZY = { 4, 56, 7, 2, 4 };
+
+	/// hello!!!!!! this length **sucks** but it's worth testing lmao
+	struct TestStructWithAStupidLongName {
+		enum DoubleNested {
+			Hiii
+		}
+		int hasSomethingInItNow;
+	}
+	/// hello again!!!!!!
+	enum InnerEnum {
+		Yo
+	}
+	void testFunction(.ToggleButton.TestStructWithAStupidLongName.DoubleNested y) {}
+
+	void config(
+		string text = "",
+		ButtonAnimator animator = NULL,
+		Font fnt = NULL, double textScale = 1, int textColor = Font.CR_WHITE,
+		AlignType alignment = AlignType_Center, Handler cmdHandler = NULL, string command = ""
+	) {
+		setAnimator(animator);
+
+		setFont(fnt);
+		setText(text);
+		setTextScale(textScale);
+		setTextColor(textColor);
+		setAlignment(alignment);
+		ButtonState initial;
+		setCurButtonState(initial);
+		setAlpha(1.0);
+
+		self.cmdHandler = cmdHandler;
+		self.command = command;
+	}
+
+	/// # a `markdown` **heading**
+	/// 
+	/// creates the `ToggleButton` or whatever
+	/// 
+	/// # example
+	/// ```
+	/// imagine this does something
+	/// ```
+	///
+	/// - i havent actually written inline documentation for zforms yet lmao
+	///     - does this work?
+	///
+	/// |abc|def|
+	/// |---|---|
+	/// |bar|baz|
+	///
+	/// <b>Bruh
+	static ToggleButton create(
+		Vector2 pos, Vector2 size, string text = "",
+		ButtonAnimator animator = NULL, Font fnt = NULL, double textScale = 1, int textColor = Font.CR_WHITE,
+		AlignType alignment = AlignType_Center, Handler cmdHandler = NULL, string command = ""
+	) {
+		let ret = new('ToggleButton');
+
+		ret.config(text, animator, fnt, textScale, textColor, alignment, cmdHandler, command);
+		ret.setBox(pos, size);
+		ret.doneInitialSetup = true;
+		if (ret.animator != NULL) {
+			let a = ButtonAnimator(ret.animator);
+			a.initialSetupDone(
+				ret,
+				ret.box,
+				ret.text,
+				ret.textScale,
+				ret.textColor,
+				ret.fnt,
+				ret.alignment,
+				ret.curButtonState,
+				ret.animStorage
+			);
+		}
+
+		return ret;
+	}
+
+	override bool handleMousePosition(bool mouseBlock, Vector2 mousePos) {
+		if (isEnabled()) {
+			AABB screenBox; boxToScreen(screenBox);
+			if (!mouseBlock && screenBox.pointCollides(mousePos)) {
+				hover = true;
+			}
+			else {
+				hover = false;
+			}
+		}
+		return false;
+	}
+
+	override void drawer() {
+		ButtonState s;
+		makeButtonState(s, on, !getHoverBlock() && hover, click, !isEnabled());
+		if (!self.curButtonState.eq(s)) { setCurButtonState(s); }
+		Super.drawer();
+	}
+
+	override bool onNavEvent(NavEventType type, bool fromController) {
+		if (isEnabled() && isFocused() && type == NavEventType_Confirm) {
+			on = !on;
+			if (cmdHandler != NULL) {
+				cmdHandler.toggleButtonChanged(self, command, on);
+			}
+			return true;
+		}
+		return false;
+	}
+
+	override void activate() {
+		on = !on;
+		if (cmdHandler != NULL) {
+			cmdHandler.toggleButtonChanged(self, command, on);
+		}
+	}
+
+	override bool onUIEvent(UiEvent ev) {
+		// if the player's clicked, and their mouse is in the right place, set the state accordingly
+		if (ev.type == UIEvent.Type_LButtonDown) {
+			let mousePos = getGlobalStore().mousePos;
+			AABB screenBox; boxToScreen(screenBox);
+			if (!mouseBlock && isEnabled() && screenBox.pointCollides(mousePos)) {
+				click = true;
+				setHoverBlock(self);
+			}
+		}
+		// if the player's releasing, check if their mouse is still in the correct range and trigger method if it was
+		else if (ev.type == UIEvent.Type_LButtonUp) {
+			if (isEnabled()) {
+				let mousePos = getGlobalStore().mousePos;
+				AABB screenBox; boxToScreen(screenBox);
+				if (screenBox.pointCollides(mousePos) && click) {
+					on = !on;
+					if (cmdHandler != NULL) {
+						cmdHandler.toggleButtonChanged(self, command, on);
+					}
+				}
+				click = false;
+				setHoverBlock(NULL);
+			}
+		}
+		return false;
+	}
+}

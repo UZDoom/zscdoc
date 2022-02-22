@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist/",
+    "noImplicitAny": true,
+    "module": "es2022",
+    "target": "es6",
+    "downlevelIteration": true,
+    "allowJs": false,
+    "moduleResolution": "node",
+    "strictNullChecks": true,
+    "jsx": "react",
+    "jsxFactory": "h"
+  }
+}

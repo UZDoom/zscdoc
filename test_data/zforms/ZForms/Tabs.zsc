@@ -1,0 +1,168 @@
+class Tabs : ElementContainer {
+	protected Array<RadioButton> tabLabels;
+	protected Array<Frame> tabFrames;
+	protected RadioController curTab;
+
+	protected double tabHeight;
+	double getTabHeight() { return self.tabHeight; }
+	void setTabHeight(double tabHeight) { self.tabHeight = tabHeight; }
+
+	protected double tabLabelMargin;
+	double getTabLabelMargin() { return self.tabLabelMargin; }
+	void setTabLabelMargin(double tabLabelMargin) { self.tabLabelMargin = tabLabelMargin; }
+
+	protected Font tabFont;
+	Font getTabFont() { return self.tabFont; }
+	void setTabFont(Font tabFont) {
+		if (tabFont == NULL) {
+			self.tabFont = smallfont;
+		}
+		else {
+			self.tabFont = tabFont;
+		}
+	}
+
+	protected double tabTextScale;
+	double getTabTextScale() { return self.tabTextScale; }
+	void setTabTextScale(double tabTextScale) { self.tabTextScale = tabTextScale; }
+
+	protected ButtonAnimator buttonAnimator;
+
+	protected uint tabFocus;
+
+	protected int lastTab;
+
+	protected bool setBoxes;
+	void setTabLabelBoxes() {
+		if (setBoxes) {
+			double curX = 0.0;
+			for (int i = 0; i < tabLabels.size(); i++) {
+				let l = tabLabels[i];
+				l.setBox((curX, 0.0), (tabFont.stringWidth(l.getText()) * tabTextScale + 2.0 * tabLabelMargin, tabHeight));
+				l.config(curTab, i, buttonAnimator, l.getText(), tabFont, tabTextScale);
+				curX += l.box.size.x;
+			}
+		}
+	}
+	
+	void config(
+		double tabHeight, double tabLabelMargin, Font tabFont = NULL, double tabTextScale = 1.0,
+		ButtonAnimator buttonAnimator = NULL
+	) {
+		self.setBoxes = false;
+
+		self.buttonAnimator = buttonAnimator;
+		setTabHeight(tabHeight);
+		setTabLabelMargin(tabLabelMargin);
+		setTabFont(tabFont);
+		setTabTextScale(tabTextScale);
+		setAlpha(1.0);
+
+		self.setBoxes = true;
+
+		setTabLabelBoxes();
+	}
+
+	static Tabs create(
+		Vector2 pos, Vector2 size,
+		double tabHeight, double tabLabelMargin, Font tabFont = NULL, double tabTextScale = 1.0,
+		ButtonAnimator buttonAnimator = NULL
+	) {
+		let ret = new("Tabs");
+
+		ret.setBox(pos, size);
+		ret.curTab = new("RadioController");
+		ret.config(tabHeight, tabLabelMargin, tabFont, tabTextScale, buttonAnimator);
+
+		return ret;
+	}
+
+	override void getFocusAABB(AABB box) {
+		let label = tabLabels[tabFocus];
+		box.pos = label.relToMainFrame((0, 0));
+		box.size = label.box.size;
+	}
+
+	override void beenFocused(NavEventType type) {
+		switch (type) {
+		case NavEventType_Left: tabFocus = tabLabels.size() - 1; break;
+
+		case NavEventType_Right:
+		case NavEventType_Tab:
+			tabFocus = 0; break;
+
+		case NavEventType_Down:
+		case NavEventType_Up:
+			tabFocus = curTab.curVal; break;
+		}
+	}
+
+	void showCorrectTab() {
+		for (int i = 0; i < tabFrames.size(); i++) {
+			if (i == curTab.curVal) { tabFrames[i].show(); }
+			else { tabFrames[i].hide(); }
+		}
+	}
+
+	void addTab(string label) {
+		let button = RadioButton.create((0, 0), (0, 0), curTab, 0, text: label);
+		let frame = Frame.create((0.0, tabHeight), (box.size.x, box.size.y - tabHeight));
+
+		button.master = self;
+		frame.master = self;
+
+		elements.push(button);
+		elements.push(frame);
+
+		tabLabels.push(button);
+		tabFrames.push(frame);
+
+		setTabLabelBoxes();
+
+		showCorrectTab();
+	}
+
+	Frame getTabFrame(int index) {
+		return tabFrames[index];
+	}
+
+	override void topDrawer() {
+		if (curTab.curVal != lastTab) {
+			lastTab = curTab.curVal;
+			showCorrectTab();
+		}
+		Super.topDrawer();
+	}
+
+	override void drawer() {
+		if (curTab.curVal != lastTab) {
+			lastTab = curTab.curVal;
+			showCorrectTab();
+		}
+		Super.drawer();
+	}
+
+	override bool onNavEvent(NavEventType type, bool fromController) {
+		if (isFocused() && isEnabled()) {
+			switch (type) {
+			case NavEventType_Right:
+				if (tabFocus != tabLabels.size() - 1) {
+					tabFocus += 1;
+					return true;
+				}
+				break;
+			case NavEventType_Left:
+				if (tabFocus != 0) {
+					tabFocus -= 1;
+					return true;
+				}
+				break;
+			case NavEventType_Confirm:
+				curTab.curVal = tabFocus;
+				break;
+			}
+		}
+		return Super.onNavEvent(type, fromController);
+	}
+
+}

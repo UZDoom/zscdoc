@@ -1,0 +1,28 @@
+class Handler ui {
+	virtual void buttonClickCommand(Button caller, string command) {
+	}
+	
+	virtual void buttonHeldCommand(Button caller, string command) {
+	}
+
+	virtual void radioButtonChanged(RadioButton caller, string command, RadioController variable) {
+	}
+
+	virtual void toggleButtonChanged(ToggleButton caller, string command, bool on) {
+	}
+
+	virtual void textInputExit(TextInput caller, string command) {
+	}
+
+	virtual void textInputChanged(TextInput caller, string command) {
+	}
+
+	virtual void sliderChanged(Slider caller, string command) {
+	}
+
+	virtual void dropdownChanged(DropdownList caller, string command) {
+	}
+
+	virtual void elementHoverChanged(Element caller, string command, bool unhovered) {
+	}
+}
