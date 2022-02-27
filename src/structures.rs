@@ -125,4 +125,5 @@ pub struct Documentation {
     pub structs: Vec<Struct>,
     pub enums: Vec<Enum>,
     pub constants: Vec<Constant>,
+    pub summary_doc: String,
 }

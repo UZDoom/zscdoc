@@ -770,6 +770,7 @@ fn enum_doc(
 }
 
 pub fn hir_to_doc_structures(
+    summary_doc: String,
     nice_name: String,
     hir: &hir::TopLevel,
     files: &Files,
@@ -780,6 +781,7 @@ pub fn hir_to_doc_structures(
         structs: vec![],
         enums: vec![],
         constants: vec![],
+        summary_doc,
     };
     for (_, node) in hir.definitions.iter() {
         let name = files.text_from_span(node[0].name().span);

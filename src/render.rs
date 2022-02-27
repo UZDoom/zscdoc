@@ -923,15 +923,22 @@ impl Documentation {
             title: format!("Summary of {}", self.name),
             sections,
         };
+        let docs_id = "summary_doc";
         render_html_boilerplate(
             &format!("{} Documentation", self.name),
             html!(
                 <div>
-                    <h1 class="main_heading">
-                        <a href="index.html"> { text!(&self.name) } </a>
-                        " Documentation"
-                    </h1>
+                    <div class="doc_row">
+                        <div class="doc_main">
+                            <h1 class="main_heading">
+                                <a href="index.html"> { text!(&self.name) } </a>
+                                " Documentation"
+                            </h1>
+                        </div>
+                        { render_doc_vis_toggle_button(&self.summary_doc, docs_id) }
+                    </div>
                     <hr/>
+                    { render_doc_comment(&self.summary_doc, true, docs_id) }
                     {
                         render_section_from_slice(
                             "Constants", "constants", "", &self.constants, false,

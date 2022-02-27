@@ -8,7 +8,7 @@ mod search;
 
 use clap::Parser;
 use zscript_parser::{
-    filesystem::{Files, GZDoomFolderFileSystem},
+    filesystem::{FileSystem, Files, GZDoomFolderFileSystem},
     hir::lower::HirLowerer,
     parser_manager::parse_filesystem,
 };
@@ -125,8 +125,14 @@ fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let filesystem = GZDoomFolderFileSystem::new(args.folder, args.nice_name.clone())
+    let mut filesystem = GZDoomFolderFileSystem::new(args.folder, args.nice_name.clone())
         .context("couldn't load a path")?;
+
+    let summary_doc = filesystem
+        .get_file("docs/summary.md")
+        .map(|s| s.text().to_string())
+        .unwrap_or_else(|| "".to_string());
+
     let mut files = Files::default();
     let mut errs = vec![];
     let parsed = parse_filesystem(filesystem, &mut files, &mut errs);
@@ -139,7 +145,7 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!("parsing errors occurred; not generating docs");
     }
 
-    let docs = document::hir_to_doc_structures(args.nice_name, &hir, &files);
+    let docs = document::hir_to_doc_structures(summary_doc, args.nice_name, &hir, &files);
     save_docs_to_folder(&args.output, &docs, args.delete_without_confirm).unwrap();
 
     Ok(())
