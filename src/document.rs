@@ -1,7 +1,11 @@
-use crate::structures::*;
+use crate::{
+    item::{context_with, ItemProvider},
+    structures::*,
+};
 use zscript_parser::{
     filesystem::Files,
-    hir::{self, ItemProvider},
+    hir,
+    interner::NameSymbol,
     ir_common::{self, Identifier},
 };
 
@@ -74,147 +78,80 @@ fn function_flag_to_string(flag: hir::FunctionFlags) -> &'static str {
     }
 }
 
-fn resolve_type_if_possible(
+fn add_type_if_possible(
     fallback: &str,
     chain: &[Identifier],
-    hir: &hir::TopLevel,
-    files: &Files,
+    item_provider: &ItemProvider,
+    context: &[NameSymbol],
     prefix_dot_if_long_chain: bool,
     source: &mut SourceCodeWithLinks,
 ) {
-    let mut chain = chain.iter();
-    let mut cur_provider = Some(hir as &dyn ItemProvider);
-    let mut cur_link = vec![];
-    let mut cur_link_sections = vec![];
-    let success = loop {
-        let id = chain.next();
-        let id = if let Some(id) = id {
-            id
-        } else {
-            break true;
-        };
-        let provider = if let Some(p) = cur_provider {
-            p
-        } else {
-            break false;
-        };
-        let thing = if let Some(p) = provider.get_one(id.symbol) {
-            p
-        } else {
-            break false;
-        };
-        cur_provider = thing.item_provider();
-        macro_rules! add {
-            ($type: ident, $name: expr) => {{
-                cur_link.push($name.clone());
-                cur_link_sections.push((
-                    $name.clone(),
-                    LinkedSectionKind::$type {
-                        link: cur_link.clone(),
-                    },
-                ));
-            }};
-        }
-        match thing {
-            hir::Item::Class(c) => {
-                let name = files.text_from_span(c.name.span).to_string();
-                add!(Class, name)
-            }
-            hir::Item::Struct(s) => {
-                let name = files.text_from_span(s.name.span).to_string();
-                add!(Struct, name)
-            }
-            hir::Item::Enum(e) => {
-                let name = files.text_from_span(e.name.span).to_string();
-                add!(Enum, name)
-            }
-            hir::Item::Const(_c) => {
-                // TODO
-                break false;
-            }
-            hir::Item::Variant {
-                enum_ref: _,
-                variant_name: _,
-            } => {
-                // TODO
-                break false;
-            }
-            hir::Item::StaticConstArray(_sca) => {
-                // TODO
-                break false;
-            }
-            hir::Item::FunctionDeclaration(_f) => {
-                // TODO
-                break false;
-            }
-            hir::Item::MemberDeclaration(_m) => {
-                // TODO
-                break false;
-            }
-        };
-    };
-    if success {
-        if prefix_dot_if_long_chain && cur_link_sections.len() > 1 {
-            source.add_no_link(".");
-        }
-        let mut first = true;
-        for (text, sec) in cur_link_sections {
-            if !first {
+    match item_provider.resolve(context, chain.iter().map(|x| x.symbol)) {
+        Some(cur_link_sections) => {
+            if prefix_dot_if_long_chain && cur_link_sections.len() > 1 {
                 source.add_no_link(".");
             }
-            first = false;
-            source.add_link(&text, sec);
+            let mut first = true;
+            for (text, sec) in cur_link_sections {
+                if !first {
+                    source.add_no_link(".");
+                }
+                first = false;
+                source.add_link(&text, sec);
+            }
         }
-    } else {
-        source.add_no_link(fallback);
+        None => {
+            source.add_no_link(fallback);
+        }
     }
 }
 
 fn add_type_to_source(
     ty: &hir::Type,
-    hir: &hir::TopLevel,
+    item_provider: &ItemProvider,
+    context: &[NameSymbol],
     source: &mut SourceCodeWithLinks,
     files: &Files,
 ) {
     match ty {
         hir::Type::SingleUserType(id) => {
-            resolve_type_if_possible(
+            add_type_if_possible(
                 files.text_from_span(id.span),
                 &[*id],
-                hir,
-                files,
+                item_provider,
+                context,
                 true,
                 source,
             );
         }
         hir::Type::DottedUserType(ids) => {
-            resolve_type_if_possible(
+            add_type_if_possible(
                 files.text_from_span(ids.span),
                 &ids.ids,
-                hir,
-                files,
+                item_provider,
+                context,
                 true,
                 source,
             );
         }
         hir::Type::NativeType(id) => {
             source.add_no_link("@");
-            resolve_type_if_possible(
+            add_type_if_possible(
                 files.text_from_span(id.span),
                 &[*id],
-                hir,
-                files,
+                item_provider,
+                context,
                 true,
                 source,
             );
         }
         hir::Type::ReadonlyType(id) => {
             source.add_no_link("ReadOnly< ");
-            resolve_type_if_possible(
+            add_type_if_possible(
                 files.text_from_span(id.span),
                 &[*id],
-                hir,
-                files,
+                item_provider,
+                context,
                 true,
                 source,
             );
@@ -222,11 +159,11 @@ fn add_type_to_source(
         }
         hir::Type::ReadonlyNativeType(id) => {
             source.add_no_link("ReadOnly< @");
-            resolve_type_if_possible(
+            add_type_if_possible(
                 files.text_from_span(id.span),
                 &[*id],
-                hir,
-                files,
+                item_provider,
+                context,
                 true,
                 source,
             );
@@ -236,11 +173,11 @@ fn add_type_to_source(
             source.add_no_link("Class< ");
             match ids {
                 Some(ids) => {
-                    resolve_type_if_possible(
+                    add_type_if_possible(
                         files.text_from_span(ids.span),
                         &ids.ids,
-                        hir,
-                        files,
+                        item_provider,
+                        context,
                         false,
                         source,
                     );
@@ -254,9 +191,9 @@ fn add_type_to_source(
         hir::Type::Map(b) => {
             let (k, v) = &**b;
             source.add_no_link("Map< ");
-            add_type_to_source(k, hir, source, files);
+            add_type_to_source(k, item_provider, context, source, files);
             source.add_no_link(", ");
-            add_type_to_source(v, hir, source, files);
+            add_type_to_source(v, item_provider, context, source, files);
             source.add_no_link(" >");
         }
         hir::Type::Array(initial_cty, initial_size) => {
@@ -272,7 +209,7 @@ fn add_type_to_source(
                     cty = new_cty;
                     size = new_size;
                 } else {
-                    add_type_to_source(cty, hir, source, files);
+                    add_type_to_source(cty, item_provider, context, source, files);
                     for s in sizes {
                         source.add_no_link(&format!(
                             "[{}]",
@@ -287,7 +224,7 @@ fn add_type_to_source(
         }
         hir::Type::DynArray(d) => {
             source.add_no_link("Array< ");
-            add_type_to_source(d, hir, source, files);
+            add_type_to_source(d, item_provider, context, source, files);
             source.add_no_link(" >");
         }
         hir::Type::Let => {
@@ -302,7 +239,8 @@ fn add_type_to_source(
 fn reconstruct_function_signature(
     owner: Owner,
     func: &hir::FunctionDeclaration,
-    hir: &hir::TopLevel,
+    item_provider: &ItemProvider,
+    context: &[NameSymbol],
     files: &Files,
 ) -> SourceCodeWithLinks {
     let mut ret = SourceCodeWithLinks { sections: vec![] };
@@ -320,7 +258,7 @@ fn reconstruct_function_signature(
                     ret.add_no_link(", ");
                 }
                 first = false;
-                add_type_to_source(ty, hir, &mut ret, files);
+                add_type_to_source(ty, item_provider, context, &mut ret, files);
             }
             ret.add_no_link(" ");
         }
@@ -362,7 +300,7 @@ fn reconstruct_function_signature(
                 ret.add_no_link(" ");
             }
         }
-        add_type_to_source(&p.param_type, hir, &mut ret, files);
+        add_type_to_source(&p.param_type, item_provider, context, &mut ret, files);
         ret.add_no_link(" ");
         ret.add_no_link(files.text_from_span(p.name.span));
         if let Some(e) = &p.init {
@@ -419,7 +357,8 @@ fn member_flag_to_string(flag: hir::MemberFlags) -> &'static str {
 fn reconstruct_member_declaration(
     owner: Owner,
     member: &hir::MemberDeclaration,
-    hir: &hir::TopLevel,
+    item_provider: &ItemProvider,
+    context: &[NameSymbol],
     files: &Files,
 ) -> SourceCodeWithLinks {
     let mut ret = SourceCodeWithLinks { sections: vec![] };
@@ -429,7 +368,7 @@ fn reconstruct_member_declaration(
             ret.add_no_link(" ");
         }
     }
-    add_type_to_source(&member.member_type, hir, &mut ret, files);
+    add_type_to_source(&member.member_type, item_provider, context, &mut ret, files);
     ret.add_no_link(" ");
     let name = files.text_from_span(member.name.span).to_string();
     ret.add_link(
@@ -466,7 +405,7 @@ fn reconstruct_enumerator_declaration(
 fn reconstruct_constant_declaration(
     owner: Owner,
     constant: &ir_common::ConstDefinition,
-    _hir: &hir::TopLevel,
+    _item_provider: &ItemProvider,
     files: &Files,
 ) -> SourceCodeWithLinks {
     let mut ret = SourceCodeWithLinks { sections: vec![] };
@@ -487,12 +426,13 @@ fn reconstruct_constant_declaration(
 fn reconstruct_static_const_array_declaration(
     owner: Owner,
     sca: &hir::StaticConstArray,
-    hir: &hir::TopLevel,
+    item_provider: &ItemProvider,
+    context: &[NameSymbol],
     files: &Files,
 ) -> SourceCodeWithLinks {
     let mut ret = SourceCodeWithLinks { sections: vec![] };
     ret.add_no_link("static const ");
-    add_type_to_source(&sca.arr_type, hir, &mut ret, files);
+    add_type_to_source(&sca.arr_type, item_provider, context, &mut ret, files);
     ret.add_no_link("[] ");
     let name = files.text_from_span(sca.name.span).to_string();
     ret.add_link(
@@ -518,8 +458,15 @@ fn reconstruct_static_const_array_declaration(
     ret
 }
 
-fn class_doc(name: &str, hir: &hir::TopLevel, c: &hir::ClassDefinition, files: &Files) -> Class {
+fn class_doc(
+    name: &str,
+    context: &[NameSymbol],
+    c: &hir::ClassDefinition,
+    files: &Files,
+    item_provider: &ItemProvider,
+) -> Class {
     let mut class_to_add = Class {
+        context: context_with(context, c.name.symbol),
         name: name.to_string(),
         span: c.span,
         inherits: c.ancestor.map(|a| files.text_from_span(a.span).to_string()),
@@ -541,13 +488,20 @@ fn class_doc(name: &str, hir: &hir::TopLevel, c: &hir::ClassDefinition, files: &
             hir::ClassInnerKind::FunctionDeclaration(f) => {
                 let owner = Owner::Class(vec![name.to_string()]);
                 let func_to_add = Function {
+                    context: class_to_add.context.clone(),
                     name: inner_name.to_string(),
                     span: f.span,
                     doc_comment: f
                         .doc_comment
                         .map(|s| s.string().to_string())
                         .unwrap_or_else(|| "".to_string()),
-                    signature: reconstruct_function_signature(owner, f, hir, files),
+                    signature: reconstruct_function_signature(
+                        owner,
+                        f,
+                        item_provider,
+                        &class_to_add.context,
+                        files,
+                    ),
                 };
                 if f.flags.contains(hir::FunctionFlags::OVERRIDE) {
                     class_to_add.overrides.push(func_to_add);
@@ -562,13 +516,20 @@ fn class_doc(name: &str, hir: &hir::TopLevel, c: &hir::ClassDefinition, files: &
             hir::ClassInnerKind::MemberDeclaration(m) => {
                 let owner = Owner::Class(vec![name.to_string()]);
                 let var_to_add = MemberVariable {
+                    context: class_to_add.context.clone(),
                     name: inner_name.to_string(),
                     span: m.span,
                     doc_comment: m
                         .doc_comment
                         .map(|s| s.string().to_string())
                         .unwrap_or_else(|| "".to_string()),
-                    def: reconstruct_member_declaration(owner, m, hir, files),
+                    def: reconstruct_member_declaration(
+                        owner,
+                        m,
+                        item_provider,
+                        &class_to_add.context,
+                        files,
+                    ),
                 };
                 if m.flags.contains(hir::MemberFlags::PRIVATE) {
                     class_to_add.private.variables.push(var_to_add);
@@ -579,38 +540,57 @@ fn class_doc(name: &str, hir: &hir::TopLevel, c: &hir::ClassDefinition, files: &
                 }
             }
             hir::ClassInnerKind::Struct(s) => {
-                let struct_to_add =
-                    struct_doc(&format!("{name}.{inner_name}"), inner_name, hir, s, files);
+                let struct_to_add = struct_doc(
+                    &format!("{name}.{inner_name}"),
+                    inner_name,
+                    &class_to_add.context,
+                    s,
+                    files,
+                    item_provider,
+                );
                 class_to_add.inner_structs.push(struct_to_add);
             }
             hir::ClassInnerKind::Enum(e) => {
-                let enum_to_add =
-                    enum_doc(&format!("{name}.{inner_name}"), inner_name, hir, e, files);
+                let enum_to_add = enum_doc(
+                    &format!("{name}.{inner_name}"),
+                    inner_name,
+                    &class_to_add.context,
+                    e,
+                    files,
+                );
                 class_to_add.inner_enums.push(enum_to_add);
             }
-            hir::ClassInnerKind::Const(c) => {
+            hir::ClassInnerKind::Const(co) => {
                 let owner = Owner::Class(vec![name.to_string()]);
                 let const_to_add = Constant {
+                    context: class_to_add.context.clone(),
                     name: inner_name.to_string(),
-                    doc_comment: c
+                    doc_comment: co
                         .doc_comment
                         .map(|s| s.string().to_string())
                         .unwrap_or_else(|| "".to_string()),
-                    span: c.span,
-                    def: reconstruct_constant_declaration(owner, c, hir, files),
+                    span: co.span,
+                    def: reconstruct_constant_declaration(owner, co, item_provider, files),
                 };
                 class_to_add.constants.push(const_to_add);
             }
             hir::ClassInnerKind::StaticConstArray(sca) => {
                 let owner = Owner::Class(vec![name.to_string()]);
                 let const_to_add = Constant {
+                    context: class_to_add.context.clone(),
                     name: inner_name.to_string(),
                     doc_comment: sca
                         .doc_comment
                         .map(|s| s.string().to_string())
                         .unwrap_or_else(|| "".to_string()),
                     span: sca.span,
-                    def: reconstruct_static_const_array_declaration(owner, sca, hir, files),
+                    def: reconstruct_static_const_array_declaration(
+                        owner,
+                        sca,
+                        item_provider,
+                        &class_to_add.context,
+                        files,
+                    ),
                 };
                 class_to_add.constants.push(const_to_add);
             }
@@ -632,11 +612,13 @@ fn class_doc(name: &str, hir: &hir::TopLevel, c: &hir::ClassDefinition, files: &
 fn struct_doc(
     name: &str,
     no_context_name: &str,
-    hir: &hir::TopLevel,
+    context: &[NameSymbol],
     s: &hir::StructDefinition,
     files: &Files,
+    item_provider: &ItemProvider,
 ) -> Struct {
     let mut struct_to_add = Struct {
+        context: context_with(context, s.name.symbol),
         name: name.to_string(),
         no_context_name: no_context_name.to_string(),
         span: s.span,
@@ -656,13 +638,20 @@ fn struct_doc(
             hir::StructInnerKind::FunctionDeclaration(f) => {
                 let owner = Owner::Struct(vec![name.to_string()]);
                 let func_to_add = Function {
+                    context: struct_to_add.context.clone(),
                     name: inner_name.to_string(),
                     span: f.span,
                     doc_comment: f
                         .doc_comment
                         .map(|s| s.string().to_string())
                         .unwrap_or_else(|| "".to_string()),
-                    signature: reconstruct_function_signature(owner, f, hir, files),
+                    signature: reconstruct_function_signature(
+                        owner,
+                        f,
+                        item_provider,
+                        &struct_to_add.context,
+                        files,
+                    ),
                 };
                 if f.flags.contains(hir::FunctionFlags::PRIVATE) {
                     struct_to_add.private.functions.push(func_to_add);
@@ -675,13 +664,20 @@ fn struct_doc(
             hir::StructInnerKind::MemberDeclaration(m) => {
                 let owner = Owner::Struct(vec![name.to_string()]);
                 let var_to_add = MemberVariable {
+                    context: struct_to_add.context.clone(),
                     name: inner_name.to_string(),
                     span: m.span,
                     doc_comment: m
                         .doc_comment
                         .map(|s| s.string().to_string())
                         .unwrap_or_else(|| "".to_string()),
-                    def: reconstruct_member_declaration(owner, m, hir, files),
+                    def: reconstruct_member_declaration(
+                        owner,
+                        m,
+                        item_provider,
+                        &struct_to_add.context,
+                        files,
+                    ),
                 };
                 if m.flags.contains(hir::MemberFlags::PRIVATE) {
                     struct_to_add.private.variables.push(var_to_add);
@@ -692,33 +688,46 @@ fn struct_doc(
                 }
             }
             hir::StructInnerKind::Enum(e) => {
-                let enum_to_add =
-                    enum_doc(&format!("{name}.{inner_name}"), inner_name, hir, e, files);
+                let enum_to_add = enum_doc(
+                    &format!("{name}.{inner_name}"),
+                    inner_name,
+                    &struct_to_add.context,
+                    e,
+                    files,
+                );
                 struct_to_add.inner_enums.push(enum_to_add);
             }
             hir::StructInnerKind::Const(c) => {
                 let owner = Owner::Struct(vec![name.to_string()]);
                 let const_to_add = Constant {
+                    context: struct_to_add.context.clone(),
                     name: inner_name.to_string(),
                     doc_comment: c
                         .doc_comment
                         .map(|s| s.string().to_string())
                         .unwrap_or_else(|| "".to_string()),
                     span: c.span,
-                    def: reconstruct_constant_declaration(owner, c, hir, files),
+                    def: reconstruct_constant_declaration(owner, c, item_provider, files),
                 };
                 struct_to_add.constants.push(const_to_add);
             }
             hir::StructInnerKind::StaticConstArray(sca) => {
                 let owner = Owner::Struct(vec![name.to_string()]);
                 let const_to_add = Constant {
+                    context: struct_to_add.context.clone(),
                     name: inner_name.to_string(),
                     doc_comment: sca
                         .doc_comment
                         .map(|s| s.string().to_string())
                         .unwrap_or_else(|| "".to_string()),
                     span: sca.span,
-                    def: reconstruct_static_const_array_declaration(owner, sca, hir, files),
+                    def: reconstruct_static_const_array_declaration(
+                        owner,
+                        sca,
+                        item_provider,
+                        &struct_to_add.context,
+                        files,
+                    ),
                 };
                 struct_to_add.constants.push(const_to_add);
             }
@@ -739,11 +748,12 @@ fn struct_doc(
 fn enum_doc(
     name: &str,
     no_context_name: &str,
-    _hir: &hir::TopLevel,
+    parent_context: &[NameSymbol],
     e: &ir_common::EnumDefinition,
     files: &Files,
 ) -> Enum {
     let mut enum_to_add = Enum {
+        context: parent_context.to_vec(),
         name: name.to_string(),
         no_context_name: no_context_name.to_string(),
         span: e.span,
@@ -756,6 +766,7 @@ fn enum_doc(
     for i in e.variants.iter() {
         let inner_name = files.text_from_span(i.name.span);
         let enumerator_to_add = Enumerator {
+            context: enum_to_add.context.clone(),
             name: inner_name.to_string(),
             span: i.span,
             doc_comment: i
@@ -774,6 +785,7 @@ pub fn hir_to_doc_structures(
     nice_name: String,
     hir: &hir::TopLevel,
     files: &Files,
+    item_provider: &ItemProvider,
 ) -> Documentation {
     let mut docs = Documentation {
         name: nice_name,
@@ -787,27 +799,28 @@ pub fn hir_to_doc_structures(
         let name = files.text_from_span(node[0].name().span);
         match &node[0].kind {
             hir::TopLevelDefinitionKind::Class(c) => {
-                let class_to_add = class_doc(name, hir, c, files);
+                let class_to_add = class_doc(name, &[], c, files, item_provider);
                 docs.classes.push(class_to_add);
             }
             hir::TopLevelDefinitionKind::Struct(s) => {
-                let struct_to_add = struct_doc(name, name, hir, s, files);
+                let struct_to_add = struct_doc(name, name, &[], s, files, item_provider);
                 docs.structs.push(struct_to_add);
             }
             hir::TopLevelDefinitionKind::Enum(e) => {
-                let enum_to_add = enum_doc(name, name, hir, e, files);
+                let enum_to_add = enum_doc(name, name, &[], e, files);
                 docs.enums.push(enum_to_add);
             }
             hir::TopLevelDefinitionKind::Const(c) => {
                 let owner = Owner::Global;
                 let const_to_add = Constant {
+                    context: vec![],
                     name: name.to_string(),
                     doc_comment: c
                         .doc_comment
                         .map(|s| s.string().to_string())
                         .unwrap_or_else(|| "".to_string()),
                     span: c.span,
-                    def: reconstruct_constant_declaration(owner, c, hir, files),
+                    def: reconstruct_constant_declaration(owner, c, item_provider, files),
                 };
                 docs.constants.push(const_to_add);
             }

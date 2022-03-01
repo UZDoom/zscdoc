@@ -2,7 +2,9 @@
 
 use crate::structures::*;
 
+use crate::item::ItemProvider;
 use itertools::Itertools;
+use pulldown_cmark::{html, BrokenLink, CowStr, LinkType, Options, Parser};
 use typed_html::{
     dom::DOMTree,
     elements::{FlowContent, PhrasingContent},
@@ -10,6 +12,7 @@ use typed_html::{
     types::{Id, SpacedSet},
     unsafe_text, OutputType,
 };
+use zscript_parser::interner::intern_name;
 
 pub enum SidebarSection {
     Header { text: String, link: Option<String> },
@@ -89,12 +92,58 @@ fn render_doc_vis_toggle_button(
     : String))
 }
 
-fn md_event_map(event: pulldown_cmark::Event) -> pulldown_cmark::Event {
+fn md_event_map<'a>(
+    event: pulldown_cmark::Event<'a>,
+    i: Option<(&ItemProvider, &[zscript_parser::interner::NameSymbol])>,
+) -> pulldown_cmark::Event<'a> {
+    use pulldown_cmark::{Event, Tag};
+    let link_process = |ty, link: CowStr<'a>, title| match i {
+        Some((item_provider, context)) => match ty {
+            LinkType::Inline | LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
+                let s = link.to_string();
+                let chain = s.split('.').map(|x| intern_name(x.trim()));
+                match item_provider.resolve(context, chain) {
+                    Some(v) => Tag::Link(ty, v.last().unwrap().1.get_href().into(), s.into()),
+                    None => Tag::Link(ty, link, title),
+                }
+            }
+            _ => Tag::Link(ty, link, title),
+        },
+        None => Tag::Link(ty, link, title),
+    };
     // for now i'm simply not dealing with html in markdown since it requires sanitation and i
     // don't want to do that lol
     match event {
-        pulldown_cmark::Event::Html(s) => pulldown_cmark::Event::Text(s),
+        Event::Html(s) => Event::Text(s),
+        Event::Start(Tag::Link(ty, link, title)) => Event::Start(link_process(ty, link, title)),
+        Event::End(Tag::Link(ty, link, title)) => Event::End(link_process(ty, link, title)),
         e => e,
+    }
+}
+
+fn broken_link_callback<'a>(
+    b: BrokenLink<'a>,
+    item_provider: &ItemProvider,
+    context: &[zscript_parser::interner::NameSymbol],
+) -> Option<(CowStr<'a>, CowStr<'a>)> {
+    match b.link_type {
+        LinkType::Shortcut => {
+            let s = if b.reference.starts_with('`') && b.reference.ends_with('`') {
+                b.reference
+                    .strip_prefix('`')
+                    .unwrap()
+                    .strip_suffix('`')
+                    .unwrap()
+            } else {
+                &b.reference
+            }
+            .to_string();
+            let chain = s.split('.').map(|x| intern_name(x.trim()));
+            item_provider
+                .resolve(context, chain)
+                .map(|v| (v.last().unwrap().1.get_href().into(), s.into()))
+        }
+        _ => None,
     }
 }
 
@@ -102,70 +151,78 @@ pub fn render_doc_summary(text: &str) -> Option<Box<dyn FlowContent<String>>> {
     if text.trim().is_empty() {
         return None;
     }
-    use pulldown_cmark::{html, Event, Options, Parser, Tag};
-    let dedented = textwrap::dedent(text);
+    use pulldown_cmark::{Event, Tag};
 
-    let options = Options::ENABLE_TABLES;
-    let parser = Parser::new_ext(&dedented, options).map(md_event_map);
-
-    struct ScannerState {
-        level: usize,
-        started: bool,
+    fn map<'a>(parser: impl Iterator<Item = Event<'a>>) -> impl Iterator<Item = Event<'a>> {
+        struct ScannerState {
+            level: usize,
+            started: bool,
+        }
+        parser.scan(
+            ScannerState {
+                level: 0,
+                started: false,
+            },
+            |state, event| {
+                fn should_stop(tag: &Tag) -> bool {
+                    matches!(
+                        tag,
+                        Tag::CodeBlock(..)
+                            | Tag::Table(..)
+                            | Tag::TableHead
+                            | Tag::TableRow
+                            | Tag::TableCell
+                    )
+                }
+                fn map_tag(tag: Tag) -> Tag {
+                    match tag {
+                        t @ (Tag::Paragraph
+                        | Tag::BlockQuote
+                        | Tag::Item
+                        | Tag::Emphasis
+                        | Tag::Strong
+                        | Tag::Link(..)) => t,
+                        _ => Tag::Paragraph,
+                    }
+                }
+                if state.started && state.level == 0 {
+                    return None;
+                }
+                state.started = true;
+                match event {
+                    Event::Start(t) => {
+                        if should_stop(&t) {
+                            return None;
+                        }
+                        state.level += 1;
+                        Some(Event::Start(map_tag(t)))
+                    }
+                    Event::End(t) => {
+                        if should_stop(&t) {
+                            return None;
+                        }
+                        state.level -= 1;
+                        Some(Event::End(map_tag(t)))
+                    }
+                    e => Some(e),
+                }
+            },
+        )
     }
+    let html_output = {
+        let dedented = textwrap::dedent(text);
 
-    let parser = parser.scan(
-        ScannerState {
-            level: 0,
-            started: false,
-        },
-        |state, event| {
-            fn should_stop(tag: &Tag) -> bool {
-                matches!(
-                    tag,
-                    Tag::CodeBlock(..)
-                        | Tag::Table(..)
-                        | Tag::TableHead
-                        | Tag::TableRow
-                        | Tag::TableCell
-                )
-            }
-            fn map_tag(tag: Tag) -> Tag {
-                match tag {
-                    t @ (Tag::Paragraph
-                    | Tag::BlockQuote
-                    | Tag::Item
-                    | Tag::Emphasis
-                    | Tag::Strong
-                    | Tag::Link(..)) => t,
-                    _ => Tag::Paragraph,
-                }
-            }
-            if state.started && state.level == 0 {
-                return None;
-            }
-            state.started = true;
-            match event {
-                Event::Start(t) => {
-                    if should_stop(&t) {
-                        return None;
-                    }
-                    state.level += 1;
-                    Some(Event::Start(map_tag(t)))
-                }
-                Event::End(t) => {
-                    if should_stop(&t) {
-                        return None;
-                    }
-                    state.level -= 1;
-                    Some(Event::End(map_tag(t)))
-                }
-                e => Some(e),
-            }
-        },
-    );
+        let options = Options::ENABLE_TABLES;
 
-    let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
+        let parser = Parser::new_ext(&dedented, options).map(|x| md_event_map(x, None));
+
+        let parser = map(parser);
+
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, parser);
+
+        html_output
+    };
 
     Some(html!(
         <div class="inline_summary">
@@ -178,18 +235,31 @@ fn render_doc_comment<T: OutputType + 'static + Send>(
     text: &str,
     large: bool,
     id: &str,
+    item_provider: &ItemProvider,
+    context: &[zscript_parser::interner::NameSymbol],
 ) -> Option<Box<dyn FlowContent<T>>> {
     if text.trim().is_empty() {
         return None;
     }
-    use pulldown_cmark::{html, Options, Parser};
-    let dedented = textwrap::dedent(text);
 
-    let options = Options::ENABLE_TABLES;
-    let parser = Parser::new_ext(&dedented, options).map(md_event_map);
+    let html_output = {
+        let dedented = textwrap::dedent(text);
 
-    let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
+        let options = Options::ENABLE_TABLES;
+
+        let mut broken_link_callback = |x| broken_link_callback(x, item_provider, context);
+        let parser = Parser::new_with_broken_link_callback(
+            &dedented,
+            options,
+            Some(&mut broken_link_callback),
+        )
+        .map(|x| md_event_map(x, Some((item_provider, context))));
+
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, parser);
+
+        html_output
+    };
 
     Some(html!(
         <div class=[
@@ -212,9 +282,9 @@ impl Owner {
     }
 }
 
-impl LinkedSection {
+impl LinkedSectionKind {
     fn get_style(&self) -> &'static str {
-        match &self.kind {
+        match &self {
             LinkedSectionKind::Struct { .. } => "struct",
             LinkedSectionKind::Class { .. } => "class",
             LinkedSectionKind::Enum { .. } => "enum",
@@ -226,7 +296,7 @@ impl LinkedSection {
     }
 
     fn get_href(&self) -> String {
-        match &self.kind {
+        match &self {
             LinkedSectionKind::Struct { link } => format!("struct.{}.html", link.join(".")),
             LinkedSectionKind::Class { link } => format!("class.{}.html", link.join(".")),
             LinkedSectionKind::Enum { link } => format!("enum.{}.html", link.join(".")),
@@ -243,6 +313,16 @@ impl LinkedSection {
                 format!("{}#constant.{}", owner.get_href_prelude(), link)
             }
         }
+    }
+}
+
+impl LinkedSection {
+    fn get_style(&self) -> &'static str {
+        self.kind.get_style()
+    }
+
+    fn get_href(&self) -> String {
+        self.kind.get_href()
     }
 }
 impl SourceCodeSection {
@@ -383,7 +463,7 @@ impl SourceCodeWithLinks {
 }
 
 impl MemberVariable {
-    fn render(&self) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("member.{}.docs", self.name);
         html!(
             <div>
@@ -393,7 +473,7 @@ impl MemberVariable {
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
-                { render_doc_comment(&self.doc_comment, false, &docs_id) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
                 <hr/>
             </div>
         )
@@ -401,7 +481,7 @@ impl MemberVariable {
 }
 
 impl Function {
-    fn render(&self) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("function.{}.docs", self.name);
         html!(
             <div>
@@ -411,7 +491,7 @@ impl Function {
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
-                { render_doc_comment(&self.doc_comment, false, &docs_id) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
                 <hr/>
             </div>
         : String)
@@ -419,7 +499,7 @@ impl Function {
 }
 
 impl Constant {
-    fn render(&self) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("constant.{}.docs", self.name);
         html!(
             <div>
@@ -429,7 +509,7 @@ impl Constant {
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
-                { render_doc_comment(&self.doc_comment, false, &docs_id) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
                 <hr/>
             </div>
         : String)
@@ -440,7 +520,7 @@ fn render_section_from_slice<'a, T, U: IntoIterator<Item = Box<dyn FlowContent<S
     name: &str,
     id: &str,
     group_class: &str,
-    slice: &'a [T],
+    slice: &[T],
     collapsed_by_default: bool,
     map: impl FnMut(&T) -> U,
 ) -> impl Iterator<Item = Box<dyn FlowContent<String>>> + 'a {
@@ -484,7 +564,7 @@ fn render_summary_grid<'a>(
     heading: &str,
     heading_id: &str,
     link_class: &'a str,
-    data: &'a [SummaryGridRow],
+    data: &[SummaryGridRow],
 ) -> impl Iterator<Item = Box<dyn FlowContent<String>>> + 'a {
     render_section_from_slice(heading, heading_id, "summary_grid", data, false, move |c| {
         [
@@ -508,7 +588,8 @@ fn render_summary_grid<'a>(
 }
 
 fn render_members_functions_pair<'a>(
-    (vis, mf, collapsed_by_default): &(&str, &'a VariablesAndFunctions, bool),
+    (vis, mf, collapsed_by_default): &(&str, &VariablesAndFunctions, bool),
+    item_provider: &'a ItemProvider,
 ) -> impl IntoIterator<Item = Box<dyn FlowContent<String>>> + 'a {
     (render_section_from_slice(
         &format!("{vis} Member Variables"),
@@ -516,7 +597,7 @@ fn render_members_functions_pair<'a>(
         "",
         &mf.variables,
         *collapsed_by_default,
-        |v| v.render(),
+        |v| v.render(item_provider),
     ))
     .chain(render_section_from_slice(
         &format!("{vis} Functions"),
@@ -524,7 +605,7 @@ fn render_members_functions_pair<'a>(
         "",
         &mf.functions,
         *collapsed_by_default,
-        |v| v.render(),
+        |v| v.render(item_provider),
     ))
 }
 
@@ -615,7 +696,7 @@ fn render_sidebar<T: OutputType + 'static + Send>(data: SidebarData) -> Box<dyn 
 }
 
 impl Class {
-    pub fn render(&self, docs_name: &str) -> DOMTree<String> {
+    pub fn render(&self, docs_name: &str, item_provider: &ItemProvider) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Constants", "#constants", &self.constants, |v| {
                 SidebarSection::Text {
@@ -692,24 +773,24 @@ impl Class {
                         { render_doc_vis_toggle_button(&self.doc_comment, docs_id) }
                     </div>
                     <hr/>
-                    { render_doc_comment(&self.doc_comment, true, docs_id) }
+                    { render_doc_comment(&self.doc_comment, true, docs_id, item_provider, &self.context) }
                     {
                         render_section_from_slice(
                             "Constants", "constants", "", &self.constants, false,
                             |v| {
-                                v.render()
+                                v.render(item_provider)
                             }
                         ).chain(
                             [
                                 ("Public", &self.public, false),
                                 ("Protected", &self.protected, false),
                                 ("Private", &self.private, true),
-                            ].iter().flat_map(render_members_functions_pair)
+                            ].iter().flat_map(|x| render_members_functions_pair(x, item_provider))
                         ).chain(
                             render_section_from_slice(
                                 "Overrides", "overrides", "", &self.overrides, true,
                                 |v| {
-                                    v.render()
+                                    v.render(item_provider)
                                 }
                             )
                         ).chain(
@@ -744,7 +825,7 @@ impl Class {
 }
 
 impl Struct {
-    pub fn render(&self, docs_name: &str) -> DOMTree<String> {
+    pub fn render(&self, docs_name: &str, item_provider: &ItemProvider) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Constants", "#constants", &self.constants, |v| {
                 SidebarSection::Text {
@@ -793,19 +874,19 @@ impl Struct {
                         { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                     </div>
                     <hr/>
-                    { render_doc_comment(&self.doc_comment, true, &docs_id) }
+                    { render_doc_comment(&self.doc_comment, true, &docs_id, item_provider, &self.context) }
                     {
                         render_section_from_slice(
                             "Constants", "constants", "", &self.constants, false,
                             |v| {
-                                v.render()
+                                v.render(item_provider)
                             }
                         ).chain(
                             [
                                 ("Public", &self.public, false),
                                 ("Protected", &self.protected, false),
                                 ("Private", &self.private, true)
-                            ].iter().flat_map(render_members_functions_pair)
+                            ].iter().flat_map(|x| render_members_functions_pair(x, item_provider))
                         ).chain(
                             render_summary_grid(
                                 "Inner Enums",
@@ -827,7 +908,7 @@ impl Struct {
 }
 
 impl Enumerator {
-    fn render(&self) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("enumerator.{}.docs", self.name);
         html!(
             <div>
@@ -839,7 +920,7 @@ impl Enumerator {
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
-                { render_doc_comment(&self.doc_comment, false, &docs_id) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
                 <hr/>
             </div>
         )
@@ -847,7 +928,7 @@ impl Enumerator {
 }
 
 impl Enum {
-    pub fn render(&self, docs_name: &str) -> DOMTree<String> {
+    pub fn render(&self, docs_name: &str, item_provider: &ItemProvider) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Enumerators", "#enumerators", &self.enumerators, |v| {
                 SidebarSection::Text {
@@ -878,9 +959,9 @@ impl Enum {
                         </div>
                         { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                     </div>
-                    { render_doc_comment(&self.doc_comment, true, &docs_id) }
+                    { render_doc_comment(&self.doc_comment, true, &docs_id, item_provider, &self.context) }
                     <h1 class="sub_heading" id="enumerators">"Enumerators"</h1>
-                    { self.enumerators.iter().map(|v| v.render()) }
+                    { self.enumerators.iter().map(|v| v.render(item_provider)) }
                 </div>
             ),
             sidebar_data,
@@ -889,7 +970,7 @@ impl Enum {
 }
 
 impl Documentation {
-    pub fn render_summary_page(&self) -> DOMTree<String> {
+    pub fn render_summary_page(&self, item_provider: &ItemProvider) -> DOMTree<String> {
         let mut sections = vec![SidebarSection::Header {
             text: "Contents".to_string(),
             link: None,
@@ -938,12 +1019,12 @@ impl Documentation {
                         { render_doc_vis_toggle_button(&self.summary_doc, docs_id) }
                     </div>
                     <hr/>
-                    { render_doc_comment(&self.summary_doc, true, docs_id) }
+                    { render_doc_comment(&self.summary_doc, true, docs_id, item_provider, &[]) }
                     {
                         render_section_from_slice(
                             "Constants", "constants", "", &self.constants, false,
                             |v| {
-                                v.render()
+                                v.render(item_provider)
                             }
                         )
                     }

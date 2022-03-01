@@ -1,4 +1,4 @@
-use zscript_parser::Span;
+use zscript_parser::{interner::NameSymbol, Span};
 
 #[derive(Debug, Clone)]
 pub enum Owner {
@@ -39,38 +39,38 @@ pub struct SourceCodeWithLinks {
     pub sections: Vec<SourceCodeSection>,
 }
 
-#[derive(Debug)]
 pub struct MemberVariable {
+    pub context: Vec<NameSymbol>,
     pub doc_comment: String,
     pub span: Span,
     pub name: String,
     pub def: SourceCodeWithLinks,
 }
 
-#[derive(Debug)]
 pub struct Function {
+    pub context: Vec<NameSymbol>,
     pub name: String,
     pub span: Span,
     pub doc_comment: String,
     pub signature: SourceCodeWithLinks,
 }
 
-#[derive(Debug)]
 pub struct Constant {
+    pub context: Vec<NameSymbol>,
     pub doc_comment: String,
     pub span: Span,
     pub name: String,
     pub def: SourceCodeWithLinks,
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct VariablesAndFunctions {
     pub variables: Vec<MemberVariable>,
     pub functions: Vec<Function>,
 }
 
-#[derive(Debug)]
 pub struct Class {
+    pub context: Vec<NameSymbol>,
     pub name: String,
     #[allow(unused)]
     pub span: Span,
@@ -85,8 +85,8 @@ pub struct Class {
     pub constants: Vec<Constant>,
 }
 
-#[derive(Debug)]
 pub struct Struct {
+    pub context: Vec<NameSymbol>,
     pub name: String,
     pub no_context_name: String,
     #[allow(unused)]
@@ -99,8 +99,8 @@ pub struct Struct {
     pub constants: Vec<Constant>,
 }
 
-#[derive(Debug)]
 pub struct Enumerator {
+    pub context: Vec<NameSymbol>,
     pub name: String,
     #[allow(unused)]
     pub span: Span,
@@ -108,8 +108,8 @@ pub struct Enumerator {
     pub decl: SourceCodeWithLinks,
 }
 
-#[derive(Debug)]
 pub struct Enum {
+    pub context: Vec<NameSymbol>,
     pub name: String,
     pub no_context_name: String,
     #[allow(unused)]
@@ -118,7 +118,6 @@ pub struct Enum {
     pub enumerators: Vec<Enumerator>,
 }
 
-#[derive(Debug)]
 pub struct Documentation {
     pub name: String,
     pub classes: Vec<Class>,

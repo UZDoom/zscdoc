@@ -10,6 +10,14 @@ class ToggleButton : ButtonBase {
 	protected bool click;
 
 	/// - markdown
+	///
+	/// a link to the [member variable `on`] and the member [`hover`]
+	///
+	/// the parent is [`ButtonBase`]
+	///
+	/// also look at [`ToggleButton.TestStructWithAStupidLongName.DoubleNested`]
+	///
+	/// [member variable `on`]: on
 	const HI = "woah";
 
 	static const int[] CRAZY = { 4, 56, 7, 2, 4 };
@@ -20,6 +28,7 @@ class ToggleButton : ButtonBase {
 			Hiii
 		}
 		int hasSomethingInItNow;
+		void t(DoubleNested hi) {}
 	}
 	/// hello again!!!!!!
 	enum InnerEnum {

@@ -39,6 +39,9 @@ pre {
 
 a {
   color: $link_fg;
+  &:hover {
+    text-decoration: underline;
+  }
 }
 a,
 span {
@@ -258,6 +261,7 @@ a.sidebar_header:hover {
 
   &:hover {
     background-color: $sidebar_hover_bg;
+    text-decoration: none;
   }
 }
 
