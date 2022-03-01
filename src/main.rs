@@ -20,9 +20,8 @@ use crate::item::ToItemProvider;
 #[derive(Parser, Debug)]
 #[clap(author, version, about = "zscript documentation generator", long_about = None)]
 struct Args {
-    #[clap(short, long, help = "Adds a path as a dependency")]
-    depends: Vec<String>,
-
+    //#[clap(short, long, help = "Adds a path as a dependency")]
+    //depends: Vec<String>,
     #[clap(short, long, help = "Path to the folder to document")]
     folder: String,
 
