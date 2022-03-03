@@ -5,9 +5,19 @@ use crate::{
 use zscript_parser::{
     filesystem::Files,
     hir,
-    interner::NameSymbol,
+    interner::{NameSymbol, StringSymbol},
     ir_common::{self, Identifier},
 };
+
+fn should_skip(doc_comment: Option<&StringSymbol>) -> bool {
+    let doc_comment = if let Some(d) = doc_comment {
+        d
+    } else {
+        return false;
+    };
+    let doc_comment = doc_comment.string();
+    doc_comment.trim() == "?doc: hidden"
+}
 
 impl SourceCodeWithLinks {
     fn add_no_link(&mut self, text: &str) {
@@ -500,6 +510,9 @@ fn class_doc(
         let inner_name = files.text_from_span(node[0].name().span);
         match &node[0].kind {
             hir::ClassInnerKind::FunctionDeclaration(f) => {
+                if should_skip(f.doc_comment.as_ref()) {
+                    continue;
+                }
                 let owner = Owner::Class(vec![name.to_string()]);
                 let overrides = if f.flags.contains(hir::FunctionFlags::OVERRIDE) {
                     let mut cur = c;
@@ -568,6 +581,9 @@ fn class_doc(
                 }
             }
             hir::ClassInnerKind::MemberDeclaration(m) => {
+                if should_skip(m.doc_comment.as_ref()) {
+                    continue;
+                }
                 let owner = Owner::Class(vec![name.to_string()]);
                 let var_to_add = MemberVariable {
                     context: class_to_add.context.clone(),
@@ -595,6 +611,9 @@ fn class_doc(
                 }
             }
             hir::ClassInnerKind::Struct(s) => {
+                if should_skip(s.doc_comment.as_ref()) {
+                    continue;
+                }
                 let struct_to_add = struct_doc(
                     &format!("{name}.{inner_name}"),
                     inner_name,
@@ -606,6 +625,9 @@ fn class_doc(
                 class_to_add.inner_structs.push(struct_to_add);
             }
             hir::ClassInnerKind::Enum(e) => {
+                if should_skip(e.doc_comment.as_ref()) {
+                    continue;
+                }
                 let enum_to_add = enum_doc(
                     &format!("{name}.{inner_name}"),
                     inner_name,
@@ -616,6 +638,9 @@ fn class_doc(
                 class_to_add.inner_enums.push(enum_to_add);
             }
             hir::ClassInnerKind::Const(co) => {
+                if should_skip(co.doc_comment.as_ref()) {
+                    continue;
+                }
                 let owner = Owner::Class(vec![name.to_string()]);
                 let const_to_add = Constant {
                     context: class_to_add.context.clone(),
@@ -630,6 +655,9 @@ fn class_doc(
                 class_to_add.constants.push(const_to_add);
             }
             hir::ClassInnerKind::StaticConstArray(sca) => {
+                if should_skip(sca.doc_comment.as_ref()) {
+                    continue;
+                }
                 let owner = Owner::Class(vec![name.to_string()]);
                 let const_to_add = Constant {
                     context: class_to_add.context.clone(),
@@ -661,6 +689,14 @@ fn class_doc(
         mf.functions.sort_unstable_by_key(|x| x.span);
         mf.variables.sort_unstable_by_key(|x| x.span);
     }
+    class_to_add.overrides.sort_unstable_by_key(|x| x.span);
+    class_to_add
+        .inner_structs
+        .sort_unstable_by(|a, b| a.name.cmp(&b.name));
+    class_to_add
+        .inner_enums
+        .sort_unstable_by(|a, b| a.name.cmp(&b.name));
+
     class_to_add
 }
 
@@ -691,6 +727,9 @@ fn struct_doc(
         let inner_name = files.text_from_span(node[0].name().span);
         match &node[0].kind {
             hir::StructInnerKind::FunctionDeclaration(f) => {
+                if should_skip(f.doc_comment.as_ref()) {
+                    continue;
+                }
                 let owner = Owner::Struct(vec![name.to_string()]);
                 let func_to_add = Function {
                     context: struct_to_add.context.clone(),
@@ -719,6 +758,9 @@ fn struct_doc(
                 }
             }
             hir::StructInnerKind::MemberDeclaration(m) => {
+                if should_skip(m.doc_comment.as_ref()) {
+                    continue;
+                }
                 let owner = Owner::Struct(vec![name.to_string()]);
                 let var_to_add = MemberVariable {
                     context: struct_to_add.context.clone(),
@@ -746,6 +788,9 @@ fn struct_doc(
                 }
             }
             hir::StructInnerKind::Enum(e) => {
+                if should_skip(e.doc_comment.as_ref()) {
+                    continue;
+                }
                 let enum_to_add = enum_doc(
                     &format!("{name}.{inner_name}"),
                     inner_name,
@@ -756,6 +801,9 @@ fn struct_doc(
                 struct_to_add.inner_enums.push(enum_to_add);
             }
             hir::StructInnerKind::Const(c) => {
+                if should_skip(c.doc_comment.as_ref()) {
+                    continue;
+                }
                 let owner = Owner::Struct(vec![name.to_string()]);
                 let const_to_add = Constant {
                     context: struct_to_add.context.clone(),
@@ -770,6 +818,9 @@ fn struct_doc(
                 struct_to_add.constants.push(const_to_add);
             }
             hir::StructInnerKind::StaticConstArray(sca) => {
+                if should_skip(sca.doc_comment.as_ref()) {
+                    continue;
+                }
                 let owner = Owner::Struct(vec![name.to_string()]);
                 let const_to_add = Constant {
                     context: struct_to_add.context.clone(),
@@ -801,6 +852,10 @@ fn struct_doc(
         mf.variables.sort_unstable_by_key(|x| x.span);
     }
     struct_to_add
+        .inner_enums
+        .sort_unstable_by(|a, b| a.name.cmp(&b.name));
+
+    struct_to_add
 }
 
 fn enum_doc(
@@ -822,6 +877,9 @@ fn enum_doc(
         enumerators: vec![],
     };
     for i in e.variants.iter() {
+        if should_skip(i.doc_comment.as_ref()) {
+            continue;
+        }
         let inner_name = files.text_from_span(i.name.span);
         let enumerator_to_add = Enumerator {
             context: enum_to_add.context.clone(),
@@ -857,18 +915,30 @@ pub fn hir_to_doc_structures(
         let name = files.text_from_span(node[0].name().span);
         match &node[0].kind {
             hir::TopLevelDefinitionKind::Class(c) => {
+                if should_skip(c.doc_comment.as_ref()) {
+                    continue;
+                }
                 let class_to_add = class_doc(name, &[], hir, c, files, item_provider);
                 docs.classes.push(class_to_add);
             }
             hir::TopLevelDefinitionKind::Struct(s) => {
+                if should_skip(s.doc_comment.as_ref()) {
+                    continue;
+                }
                 let struct_to_add = struct_doc(name, name, &[], s, files, item_provider);
                 docs.structs.push(struct_to_add);
             }
             hir::TopLevelDefinitionKind::Enum(e) => {
+                if should_skip(e.doc_comment.as_ref()) {
+                    continue;
+                }
                 let enum_to_add = enum_doc(name, name, &[], e, files);
                 docs.enums.push(enum_to_add);
             }
             hir::TopLevelDefinitionKind::Const(c) => {
+                if should_skip(c.doc_comment.as_ref()) {
+                    continue;
+                }
                 let owner = Owner::Global;
                 let const_to_add = Constant {
                     context: vec![],
@@ -889,5 +959,6 @@ pub fn hir_to_doc_structures(
     docs.structs.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     docs.enums.sort_unstable_by(|a, b| a.name.cmp(&b.name));
     docs.constants.sort_unstable_by_key(|x| x.span);
+
     docs
 }
