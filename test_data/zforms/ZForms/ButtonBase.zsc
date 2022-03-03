@@ -1,42 +1,42 @@
-class ButtonAnimator : Animator abstract {
-	abstract void stateChange(ButtonBase elem, ButtonState old, ButtonState new, Object storage);
-	abstract void textChange(ButtonBase elem, String old, String new, Object storage);
-	abstract void textScaleChange(ButtonBase elem, double old, double new, Object storage);
-	abstract void textColorChange(ButtonBase elem, int old, int new, Object storage);
-	abstract void fontChange(ButtonBase elem, Font old, Font new, Object storage);
-	abstract void alignmentChange(ButtonBase elem, AlignType old, AlignType new, Object storage);
+class ZF_ButtonAnimator : ZF_Animator abstract {
+	abstract void stateChange(ZF_ButtonBase elem, ZF_ButtonState old, ZF_ButtonState new, Object storage);
+	abstract void textChange(ZF_ButtonBase elem, String old, String new, Object storage);
+	abstract void textScaleChange(ZF_ButtonBase elem, double old, double new, Object storage);
+	abstract void textColorChange(ZF_ButtonBase elem, int old, int new, Object storage);
+	abstract void fontChange(ZF_ButtonBase elem, Font old, Font new, Object storage);
+	abstract void alignmentChange(ZF_ButtonBase elem, ZF_AlignType old, ZF_AlignType new, Object storage);
 
 	abstract void initialSetupDone(
-		ButtonBase elem,
-		AABB box,
+		ZF_ButtonBase elem,
+		ZF_AABB box,
 		String text,
 		double textScale,
 		int textColor,
 		Font font,
-		AlignType alignment,
-		ButtonState state,
+		ZF_AlignType alignment,
+		ZF_ButtonState state,
 		Object storage
 	);
 }
 
-class BasicButtonAnimatorStorage {
-	BoxImage images[7];
-	Label label;
+class ZF_BasicButtonAnimatorStorage {
+	ZF_BoxImage images[7];
+	ZF_Label label;
 }
 
-class BasicButtonAnimator : ButtonAnimator {
-	private BoxTextures textures[7];
+class ZF_BasicButtonAnimator : ZF_ButtonAnimator {
+	private ZF_BoxTextures textures[7];
 
-	static BasicButtonAnimator create(
-		BoxTextures offNothing,
-		BoxTextures offHover,
-		BoxTextures offClick,
-		BoxTextures onNothing,
-		BoxTextures onHover,
-		BoxTextures onClick,
-		BoxTextures disabled
+	static ZF_BasicButtonAnimator create(
+		ZF_BoxTextures offNothing,
+		ZF_BoxTextures offHover,
+		ZF_BoxTextures offClick,
+		ZF_BoxTextures onNothing,
+		ZF_BoxTextures onHover,
+		ZF_BoxTextures onClick,
+		ZF_BoxTextures disabled
 	) {
-		let ret = new("BasicButtonAnimator");
+		let ret = new("ZF_BasicButtonAnimator");
 		ret.textures[0] = offNothing;
 		ret.textures[1] = offHover;
 		ret.textures[2] = offClick;
@@ -47,56 +47,56 @@ class BasicButtonAnimator : ButtonAnimator {
 		return ret;
 	}
 
-	override AnimatorSetupResult setupOnElement(ElementContainer elem) {
-		let button = ButtonBase(elem);
-		let storage = new("BasicButtonAnimatorStorage");
-		let result = AnimatorSetupResult.Create(storage);
+	override ZF_AnimatorSetupResult setupOnElement(ZF_ElementContainer elem) {
+		let button = ZF_ButtonBase(elem);
+		let storage = new("ZF_BasicButtonAnimatorStorage");
+		let result = ZF_AnimatorSetupResult.Create(storage);
 		let pos = elem.getPos();
 		let size = elem.getSize();
 		for (int i = 0; i < 7; i++) {
-			let img = textures[i] != NULL ? BoxImage.create((0, 0), size, textures[i]) : NULL;
+			let img = textures[i] != NULL ? ZF_BoxImage.create((0, 0), size, textures[i]) : NULL;
 			if (img != NULL) {
 				img.hide();
 				result.elements.push(img);
 			}
 			storage.images[i] = img;
 		}
-		let label = Label.create((0, 0), size);
+		let label = ZF_Label.create((0, 0), size);
 		result.elements.push(label);
 		storage.label = label;
 		return result;
 	}
 
-	override void stateChange(ButtonBase elem, ButtonState old, ButtonState new, Object storage) {
-		let storage = BasicButtonAnimatorStorage(storage);
+	override void stateChange(ZF_ButtonBase elem, ZF_ButtonState old, ZF_ButtonState new, Object storage) {
+		let storage = ZF_BasicButtonAnimatorStorage(storage);
 		let oldIndex = old.getStateInt();
 		let newIndex = new.getStateInt();
 		if (storage.images[oldIndex] != NULL) storage.images[oldIndex].hide();
 		if (storage.images[newIndex] != NULL) storage.images[newIndex].show();
 	}
-	override void textChange(ButtonBase elem, String old, String new, Object storage) {
-		let storage = BasicButtonAnimatorStorage(storage);
+	override void textChange(ZF_ButtonBase elem, String old, String new, Object storage) {
+		let storage = ZF_BasicButtonAnimatorStorage(storage);
 		storage.label.setText(new);
 	}
-	override void textScaleChange(ButtonBase elem, double old, double new, Object storage) {
-		let storage = BasicButtonAnimatorStorage(storage);
+	override void textScaleChange(ZF_ButtonBase elem, double old, double new, Object storage) {
+		let storage = ZF_BasicButtonAnimatorStorage(storage);
 		storage.label.setTextScale(new);
 	}
-	override void textColorChange(ButtonBase elem, int old, int new, Object storage) {
-		let storage = BasicButtonAnimatorStorage(storage);
+	override void textColorChange(ZF_ButtonBase elem, int old, int new, Object storage) {
+		let storage = ZF_BasicButtonAnimatorStorage(storage);
 		storage.label.setTextColor(new);
 	}
-	override void fontChange(ButtonBase elem, Font old, Font new, Object storage) {
-		let storage = BasicButtonAnimatorStorage(storage);
+	override void fontChange(ZF_ButtonBase elem, Font old, Font new, Object storage) {
+		let storage = ZF_BasicButtonAnimatorStorage(storage);
 		storage.label.setFont(new);
 	}
-	override void alignmentChange(ButtonBase elem, AlignType old, AlignType new, Object storage) {
-		let storage = BasicButtonAnimatorStorage(storage);
+	override void alignmentChange(ZF_ButtonBase elem, ZF_AlignType old, ZF_AlignType new, Object storage) {
+		let storage = ZF_BasicButtonAnimatorStorage(storage);
 		storage.label.setAlignment(new);
 	}
 
-	override void boxChange(ElementContainer elem, AABB old, AABB new, Object storage) {
-		let storage = BasicButtonAnimatorStorage(storage);
+	override void boxChange(ZF_ElementContainer elem, ZF_AABB old, ZF_AABB new, Object storage) {
+		let storage = ZF_BasicButtonAnimatorStorage(storage);
 		for (int i = 0; i < 7; i++) {
 			if (storage.images[i] != NULL) storage.images[i].setBox((0, 0), new.size);
 		}
@@ -104,17 +104,17 @@ class BasicButtonAnimator : ButtonAnimator {
 	}
 
 	override void initialSetupDone(
-		ButtonBase elem,
-		AABB box,
+		ZF_ButtonBase elem,
+		ZF_AABB box,
 		String text,
 		double textScale,
 		int textColor,
 		Font font,
-		AlignType alignment,
-		ButtonState state,
+		ZF_AlignType alignment,
+		ZF_ButtonState state,
 		Object storage
 	) {
-		let storage = BasicButtonAnimatorStorage(storage);
+		let storage = ZF_BasicButtonAnimatorStorage(storage);
 		for (int i = 0; i < 7; i++) {
 			if (storage.images[i] != NULL) storage.images[i].setBox((0, 0), box.size);
 		}
@@ -129,19 +129,19 @@ class BasicButtonAnimator : ButtonAnimator {
 	}
 }
 
-enum ButtonMouseState {
-	ButtonMouseState_Nothing,
-	ButtonMouseState_Hover,
-	ButtonMouseState_Clicked
+enum ZF_ButtonMouseState {
+	ZF_ButtonMouseState_Nothing,
+	ZF_ButtonMouseState_Hover,
+	ZF_ButtonMouseState_Clicked
 }
-enum ButtonLogicalState {
-	ButtonLogicalState_Off,
-	ButtonLogicalState_On
+enum ZF_ButtonLogicalState {
+	ZF_ButtonLogicalState_Off,
+	ZF_ButtonLogicalState_On
 }
-struct ButtonState {
+struct ZF_ButtonState {
 	bool disabled;
-	ButtonMouseState mouseState;
-	ButtonLogicalState logicalState;
+	ZF_ButtonMouseState mouseState;
+	ZF_ButtonLogicalState logicalState;
 
 	int getStateInt() {
 		if (disabled) { return 6; }
@@ -150,13 +150,13 @@ struct ButtonState {
 		}
 	}
 
-	void copyFrom(ButtonState from) {
+	void copyFrom(ZF_ButtonState from) {
 		self.disabled = from.disabled;
 		self.mouseState = from.mouseState;
 		self.logicalState = from.logicalState;
 	}
 
-	bool eq(ButtonState other) {
+	bool eq(ZF_ButtonState other) {
 		return
 			self.disabled == other.disabled &&
 			self.mouseState == other.mouseState &&
@@ -164,12 +164,12 @@ struct ButtonState {
 	}
 }
 
-class ButtonBase : ElementContainer {
-	protected void makeButtonState(ButtonState s, bool logicalOn, bool hover, bool clicked, bool disabled) {
+class ZF_ButtonBase : ZF_ElementContainer {
+	protected void makeButtonState(ZF_ButtonState s, bool logicalOn, bool hover, bool clicked, bool disabled) {
 		s.mouseState =
-			clicked ? ButtonMouseState_Clicked :
-				(hover ? ButtonMouseState_Hover : ButtonMouseState_Nothing);
-		s.logicalState = logicalOn ? ButtonLogicalState_On : ButtonLogicalState_Off;
+			clicked ? ZF_ButtonMouseState_Clicked :
+				(hover ? ZF_ButtonMouseState_Hover : ZF_ButtonMouseState_Nothing);
+		s.logicalState = logicalOn ? ZF_ButtonLogicalState_On : ZF_ButtonLogicalState_Off;
 		s.disabled = disabled;
 	}
 
@@ -183,7 +183,7 @@ class ButtonBase : ElementContainer {
 		else {
 			self.fnt = fnt;
 		}
-		let animator = ButtonAnimator(animator);
+		let animator = ZF_ButtonAnimator(animator);
 		if (shouldUpdateAnimator()) { animator.fontChange(self, old, self.fnt, animStorage); }
 	}
 
@@ -191,7 +191,7 @@ class ButtonBase : ElementContainer {
 	string getText() { return self.text; }
 	void setText(string text) {
 		let old = self.text;
-		let animator = ButtonAnimator(animator);
+		let animator = ZF_ButtonAnimator(animator);
 		self.text = text; if (shouldUpdateAnimator()) { animator.textChange(self, old, self.text, animStorage); }
 	}
 
@@ -199,7 +199,7 @@ class ButtonBase : ElementContainer {
 	int getTextColor() { return self.textColor; }
 	void setTextColor(int textColor) {
 		let old = self.textColor;
-		let animator = ButtonAnimator(animator);
+		let animator = ZF_ButtonAnimator(animator);
 		self.textColor = textColor; if (shouldUpdateAnimator()) { animator.textColorChange(self, old, self.textColor, animStorage); }
 	}
 
@@ -207,23 +207,23 @@ class ButtonBase : ElementContainer {
 	double getTextScale() { return self.textScale; }
 	void setTextScale(double textScale) {
 		let old = self.textScale;
-		let animator = ButtonAnimator(animator);
+		let animator = ZF_ButtonAnimator(animator);
 		self.textScale = textScale; if (shouldUpdateAnimator()) { animator.textScaleChange(self, old, self.textScale, animStorage); }
 	}
 
-	protected AlignType alignment;
-	AlignType getAlignment() { return self.alignment; }
-	void setAlignment(AlignType alignment) {
+	protected ZF_AlignType alignment;
+	ZF_AlignType getAlignment() { return self.alignment; }
+	void setAlignment(ZF_AlignType alignment) {
 		let old = self.alignment;
-		let animator = ButtonAnimator(animator);
+		let animator = ZF_ButtonAnimator(animator);
 		self.alignment = alignment; if (shouldUpdateAnimator()) { animator.alignmentChange(self, old, self.alignment, animStorage); }
 	}
 		
-	protected ButtonState curButtonState;
-	void getCurButtonState(ButtonState o) { o.copyFrom(self.curButtonState); }
-	protected void setCurButtonState(ButtonState curButtonState) {
-		ButtonState old; old.copyFrom(self.curButtonState);
-		let animator = ButtonAnimator(animator);
+	protected ZF_ButtonState curButtonState;
+	void getCurButtonState(ZF_ButtonState o) { o.copyFrom(self.curButtonState); }
+	protected void setCurButtonState(ZF_ButtonState curButtonState) {
+		ZF_ButtonState old; old.copyFrom(self.curButtonState);
+		let animator = ZF_ButtonAnimator(animator);
 		self.curButtonState.copyFrom(curButtonState);
 		if (shouldUpdateAnimator()) { animator.stateChange(self, old, self.curButtonState, animStorage); }
 	}

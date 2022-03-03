@@ -39,12 +39,18 @@ pub struct SourceCodeWithLinks {
     pub sections: Vec<SourceCodeSection>,
 }
 
+pub struct Deprecated {
+    pub version: String,
+    pub reason: String,
+}
+
 pub struct MemberVariable {
     pub context: Vec<NameSymbol>,
     pub doc_comment: String,
     pub span: Span,
     pub name: String,
     pub def: SourceCodeWithLinks,
+    pub deprecated: Option<Deprecated>,
 }
 
 pub struct Function {
@@ -53,6 +59,8 @@ pub struct Function {
     pub span: Span,
     pub doc_comment: String,
     pub signature: SourceCodeWithLinks,
+    pub overrides: Option<LinkedSection>,
+    pub deprecated: Option<Deprecated>,
 }
 
 pub struct Constant {

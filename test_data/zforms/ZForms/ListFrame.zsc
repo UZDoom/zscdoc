@@ -1,4 +1,4 @@
-class ListFrame : Frame {
+class ZF_ListFrame : ZF_Frame {
 	protected double padding;
 	double getPadding() { return self.padding; }
 	void setPadding(double padding) { self.padding = padding; }
@@ -12,10 +12,10 @@ class ListFrame : Frame {
 		}
 	}
 
-	static ListFrame create(
+	static ZF_ListFrame create(
 		Vector2 pos, Vector2 size, double padding
 	) {
-		let ret = new('ListFrame');
+		let ret = new('ZF_ListFrame');
 
 		ret.setBox(pos, size);
 		ret.padding = padding;
@@ -29,7 +29,7 @@ class ListFrame : Frame {
 		Super.drawer();
 	}
 
-	override void onPack(Element elem) {
+	override void onPack(ZF_Element elem) {
 		setElementBoxes();
 	}
 }

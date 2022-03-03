@@ -1,11 +1,11 @@
-class DropdownItems {
+class ZF_DropdownItems {
 	Array<string> items;
 }
 
-class DropdownList : Element {
-	protected DropdownItems items;
-	DropdownItems getItems() { return self.items; }
-	void setItems(DropdownItems items) { self.items = items; }
+class ZF_DropdownList : ZF_Element {
+	protected ZF_DropdownItems items;
+	ZF_DropdownItems getItems() { return self.items; }
+	void setItems(ZF_DropdownItems items) { self.items = items; }
 
 	protected int textColor;
 	int getTextColor() { return self.textColor; }
@@ -29,24 +29,24 @@ class DropdownList : Element {
 	protected int selection;
 	int getSelection() { return self.selection; }
 
-	protected Frame bindingFrame;
-	Frame getBindingFrame() { return self.bindingFrame; }
-	void setBindingFrame(Frame bindingFrame) { self.bindingFrame = bindingFrame; }
+	protected ZF_Frame bindingFrame;
+	ZF_Frame getBindingFrame() { return self.bindingFrame; }
+	void setBindingFrame(ZF_Frame bindingFrame) { self.bindingFrame = bindingFrame; }
 
-	protected BoxTextures boxBg;
-	BoxTextures getBoxBgTexture() { return self.boxBg; }
-	void setBoxBgTexture(BoxTextures boxBg) { self.boxBg = boxBg; }
-	protected BoxDrawer boxBgDrawer;
+	protected ZF_BoxTextures boxBg;
+	ZF_BoxTextures getBoxBgTexture() { return self.boxBg; }
+	void setBoxBgTexture(ZF_BoxTextures boxBg) { self.boxBg = boxBg; }
+	protected ZF_BoxDrawer boxBgDrawer;
 
-	protected BoxTextures listBg;
-	BoxTextures getListBgTexture() { return self.listBg; }
-	void setListBgTexture(BoxTextures listBg) { self.listBg = listBg; }
-	protected BoxDrawer listBgDrawer;
+	protected ZF_BoxTextures listBg;
+	ZF_BoxTextures getListBgTexture() { return self.listBg; }
+	void setListBgTexture(ZF_BoxTextures listBg) { self.listBg = listBg; }
+	protected ZF_BoxDrawer listBgDrawer;
 
-	protected BoxTextures highlightBg;
-	BoxTextures getHighlightBgTexture() { return self.highlightBg; }
-	void setHighlightBgTexture(BoxTextures highlightBg) { self.highlightBg = highlightBg; }
-	protected BoxDrawer highlightBgDrawer;
+	protected ZF_BoxTextures highlightBg;
+	ZF_BoxTextures getHighlightBgTexture() { return self.highlightBg; }
+	void setHighlightBgTexture(ZF_BoxTextures highlightBg) { self.highlightBg = highlightBg; }
+	protected ZF_BoxDrawer highlightBgDrawer;
 
 	protected string dropTex;
 	string getDropTex() { return self.dropTex; }
@@ -58,10 +58,10 @@ class DropdownList : Element {
 	protected bool lastKey;
 
 	void config(
-		DropdownItems items, Font fnt = NULL, double textScale = 1.0, int textColor = Font.CR_WHITE,
-		BoxTextures boxBg = NULL, BoxTextures listBg = NULL, BoxTextures highlightBg = NULL,
-		string dropTex = "", int defaultSelection = -1, Handler cmdHandler = NULL, string command = "",
-		Frame bindingFrame = NULL
+		ZF_DropdownItems items, Font fnt = NULL, double textScale = 1.0, int textColor = Font.CR_WHITE,
+		ZF_BoxTextures boxBg = NULL, ZF_BoxTextures listBg = NULL, ZF_BoxTextures highlightBg = NULL,
+		string dropTex = "", int defaultSelection = -1, ZF_Handler cmdHandler = NULL, string command = "",
+		ZF_Frame bindingFrame = NULL
 	) {
 		setFont(fnt);
 		setItems(items);
@@ -79,14 +79,14 @@ class DropdownList : Element {
 		self.selection = defaultSelection;
 	}
 
-	static DropdownList create(
+	static ZF_DropdownList create(
 		Vector2 pos, Vector2 size,
-		DropdownItems items, Font fnt = NULL, double textScale = 1.0, int textColor = Font.CR_WHITE,
-		BoxTextures boxBg = NULL, BoxTextures listBg = NULL, BoxTextures highlightBg = NULL,
-		string dropTex = "", int defaultSelection = -1, Handler cmdHandler = NULL, string command = "",
-		Frame bindingFrame = NULL
+		ZF_DropdownItems items, Font fnt = NULL, double textScale = 1.0, int textColor = Font.CR_WHITE,
+		ZF_BoxTextures boxBg = NULL, ZF_BoxTextures listBg = NULL, ZF_BoxTextures highlightBg = NULL,
+		string dropTex = "", int defaultSelection = -1, ZF_Handler cmdHandler = NULL, string command = "",
+		ZF_Frame bindingFrame = NULL
 	) {
-		let ret = new("DropdownList");
+		let ret = new("ZF_DropdownList");
 
 		ret.config(
 			items, fnt, textScale, textColor, boxBg, listBg, highlightBg, dropTex,
@@ -97,13 +97,13 @@ class DropdownList : Element {
 		return ret;
 	}
 
-	void dropdownAABB(AABB screenBox) {
-		AABB aabb;
+	void dropdownAABB(ZF_AABB screenBox) {
+		ZF_AABB aabb;
 		aabb.pos = (0.0, getDropdownYOff());
 		aabb.size = (box.size.x, box.size.y * items.items.size());
 		aabbToScreen(screenBox, aabb, false);
 		if (bindingFrame != NULL) {
-			AABB bindingBox; bindingFrame.boxToScreen(bindingBox);
+			ZF_AABB bindingBox; bindingFrame.boxToScreen(bindingBox);
 			screenBox.rectOfIntersection(screenBox, bindingBox);
 		}
 	}
@@ -111,14 +111,14 @@ class DropdownList : Element {
 	override bool blocksMousePriority(Vector2 mousePos) {
 		if (dontBlockMouse) return false;
 		if (!active) return false;
-		AABB screenBox; dropdownAABB(screenBox);
+		ZF_AABB screenBox; dropdownAABB(screenBox);
 		return screenBox.pointCollides(mousePos);
 	}
 
 	override void drawer() {
 		if (hidden) { return; }
 
-		AABB beforeClip, clipRect;
+		ZF_AABB beforeClip, clipRect;
 		screenClip(beforeClip, clipRect);
 		Screen.setClipRect(int(clipRect.pos.x), int(clipRect.pos.y), int(clipRect.size.x), int(clipRect.size.y));
 
@@ -129,7 +129,7 @@ class DropdownList : Element {
 		}
 		if (selection != -1) {
 			let text = items.items[selection];
-			Vector2 pos = getAlignedDrawPos(box.size, (fnt.stringWidth(text), fnt.getHeight()) * textScale, AlignType_CenterLeft);
+			Vector2 pos = getAlignedDrawPos(box.size, (fnt.stringWidth(text), fnt.getHeight()) * textScale, ZF_AlignType_CenterLeft);
 			drawText(pos + (4.0 * textScale, 0.0), fnt, text, textColor, textScale);
 		}
 		TextureID dropTexID = TexMan.checkForTexture(dropTex, TexMan.Type_Any);
@@ -143,11 +143,11 @@ class DropdownList : Element {
 	}
 
 	double getDropdownYOff() {
-		AABB aabb;
+		ZF_AABB aabb;
 		aabb.pos = (0.0, box.size.y);
 		aabb.size = (box.size.x, box.size.y * items.items.size());
-		AABB dropdownBox; aabbToScreen(dropdownBox, aabb, false);
-		AABB masterBox;
+		ZF_AABB dropdownBox; aabbToScreen(dropdownBox, aabb, false);
+		ZF_AABB masterBox;
 		if (bindingFrame != NULL) {
 			bindingFrame.boxToScreen(masterBox);
 		}
@@ -174,7 +174,7 @@ class DropdownList : Element {
 		if (hidden) { return; }
 		if (!active) return;
 
-		AABB screenBox; dropdownAABB(screenBox);
+		ZF_AABB screenBox; dropdownAABB(screenBox);
 		let mousePos = getGlobalStore().mousePos;
 		if (screenBox.pointCollides(mousePos)) {
 			hover = -1;
@@ -187,7 +187,7 @@ class DropdownList : Element {
 			hover = -1;
 		}
 
-		AABB beforeClip, clipRect;
+		ZF_AABB beforeClip, clipRect;
 		if (bindingFrame != NULL) {
 			bindingFrame.screenClip(beforeClip, clipRect);
 			Screen.setClipRect(int(clipRect.pos.x), int(clipRect.pos.y), int(clipRect.size.x), int(clipRect.size.y));
@@ -205,7 +205,7 @@ class DropdownList : Element {
 		}
 		for (int i = 0; i < items.items.size(); i++) {
 			let text = items.items[i];
-			Vector2 pos = getAlignedDrawPos(box.size, (fnt.stringWidth(text), fnt.getHeight()) * textScale, AlignType_CenterLeft);
+			Vector2 pos = getAlignedDrawPos(box.size, (fnt.stringWidth(text), fnt.getHeight()) * textScale, ZF_AlignType_CenterLeft);
 			drawText(pos + (4.0 * textScale, getDropdownYOff() + box.size.y * i), fnt, text, textColor, textScale);
 		}
 
@@ -214,7 +214,7 @@ class DropdownList : Element {
 
 	bool setSelection() {
 		let mousePos = getGlobalStore().mousePos;
-		AABB dropdownBox; dropdownAABB(dropdownBox);
+		ZF_AABB dropdownBox; dropdownAABB(dropdownBox);
 		if (dropdownBox.pointCollides(mousePos) && hover != -1) {
 			let newSelection = hover;
 			let fireEvent = selection != newSelection;
@@ -224,15 +224,15 @@ class DropdownList : Element {
 			}
 			return true;
 		}
-		AABB screenBox; boxToScreen(screenBox);
+		ZF_AABB screenBox; boxToScreen(screenBox);
 		return screenBox.pointCollides(mousePos);
 	}
 
-	override bool onNavEvent(NavEventType type, bool fromController) {
+	override bool onNavEvent(ZF_NavEventType type, bool fromController) {
 		if (isEnabled()) {
 			if (active) {
 				switch (type) {
-				case NavEventType_Confirm: {
+				case ZF_NavEventType_Confirm: {
 					let newSelection = hover;
 					let fireEvent = selection != newSelection;
 					selection = newSelection;
@@ -242,7 +242,7 @@ class DropdownList : Element {
 					active = false;
 					break;
 				}
-				case NavEventType_Down: {
+				case ZF_NavEventType_Down: {
 					if (hover == -1) { hover = 0; }
 					else {
 						hover += 1;
@@ -253,7 +253,7 @@ class DropdownList : Element {
 					lastKey = true;
 					break;
 				}
-				case NavEventType_Up: {
+				case ZF_NavEventType_Up: {
 					if (hover == -1) { hover = items.items.size() - 1; }
 					else {
 						hover -= 1;
@@ -266,7 +266,7 @@ class DropdownList : Element {
 				}
 				}
 				return true;
-			} else if (isFocused() && type == NavEventType_Confirm) {
+			} else if (isFocused() && type == ZF_NavEventType_Confirm) {
 				active = true;
 				setHoverBlock(self);
 				hover = -1;
@@ -276,7 +276,7 @@ class DropdownList : Element {
 		return false;
 	}
 
-	override bool onUIEventPriority(UiEvent ev) {
+	override bool onUIEventPriority(ZF_UiEvent ev) {
 		let mousePos = getGlobalStore().mousePos;
 		if (ev.type == UIEvent.Type_LButtonDown) {
 			if (isEnabled()) {
@@ -290,7 +290,7 @@ class DropdownList : Element {
 		else if (ev.type == UIEvent.Type_LButtonUp && clicking) {
 			clicking = false;
 			setHoverBlock(NULL);
-			AABB screenBox; dropdownAABB(screenBox);
+			ZF_AABB screenBox; dropdownAABB(screenBox);
 			if (active && screenBox.pointCollides(mousePos)) {
 				active = false;
 				return setSelection();
@@ -302,16 +302,16 @@ class DropdownList : Element {
 		return false;
 	}
 
-	override bool onUIEvent(UiEvent ev) {
+	override bool onUIEvent(ZF_UiEvent ev) {
 		if (ev.type == UIEvent.Type_LButtonDown) {
 			if (isEnabled()) {
-				AABB screenBox; boxToScreen(screenBox);
+				ZF_AABB screenBox; boxToScreen(screenBox);
 				let mousePos = getGlobalStore().mousePos;
 				if (!active && !mouseBlock && screenBox.pointCollides(mousePos)) {
 					active = true;
 					hover = -1;
 					clicking = true;
-					AABB dropdownBox; dropdownAABB(dropdownBox);
+					ZF_AABB dropdownBox; dropdownAABB(dropdownBox);
 					if (dropdownBox.pointCollides(mousePos)) {
 						clicking = false;
 					}

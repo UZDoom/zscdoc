@@ -1,12 +1,12 @@
-class FocusLinkHelper ui {
-	private Array<Element> elements;
+class ZF_FocusLinkHelper ui {
+	private Array<ZF_Element> elements;
 	private uint width;
 	private uint height;
 	private bool horzWraparound;
 	private bool vertWraparound;
 
-	static FocusLinkHelper create(uint width, uint height, bool horzWraparound, bool vertWraparound) {
-		let ret = new("FocusLinkHelper");
+	static ZF_FocusLinkHelper create(uint width, uint height, bool horzWraparound, bool vertWraparound) {
+		let ret = new("ZF_FocusLinkHelper");
 
 		ret.width = width;
 		ret.height = height;
@@ -17,7 +17,7 @@ class FocusLinkHelper ui {
 		return ret;
 	}
 
-	void setElement(uint row, uint col, Element elem) {
+	void setElement(uint row, uint col, ZF_Element elem) {
 		if (row >= height) throwAbortException("row >= height");
 		if (col >= width) throwAbortException("col >= width");
 		elements[row * width + col] = elem;
@@ -29,7 +29,7 @@ class FocusLinkHelper ui {
 			if (!vertWraparound) return;
 			newRow = height - 1;
 		}
-		elements[row * width + col].setFocusNeighbor(NavEventType_Up, elements[newRow * width + col]);
+		elements[row * width + col].setFocusNeighbor(ZF_NavEventType_Up, elements[newRow * width + col]);
 	}
 	private void setDown(uint row, uint col) {
 		let newRow = row + 1;
@@ -37,7 +37,7 @@ class FocusLinkHelper ui {
 			if (!vertWraparound) return;
 			newRow = 0;
 		}
-		elements[row * width + col].setFocusNeighbor(NavEventType_Down, elements[newRow * width + col]);
+		elements[row * width + col].setFocusNeighbor(ZF_NavEventType_Down, elements[newRow * width + col]);
 	}
 	private void setLeft(uint row, uint col) {
 		let newCol = col - 1;
@@ -45,7 +45,7 @@ class FocusLinkHelper ui {
 			if (!horzWraparound) return;
 			newCol = width - 1;
 		}
-		elements[row * width + col].setFocusNeighbor(NavEventType_Left, elements[row * width + newCol]);
+		elements[row * width + col].setFocusNeighbor(ZF_NavEventType_Left, elements[row * width + newCol]);
 	}
 	private void setRight(uint row, uint col) {
 		let newCol = col + 1;
@@ -53,7 +53,7 @@ class FocusLinkHelper ui {
 			if (!horzWraparound) return;
 			newCol = 0;
 		}
-		elements[row * width + col].setFocusNeighbor(NavEventType_Right, elements[row * width + newCol]);
+		elements[row * width + col].setFocusNeighbor(ZF_NavEventType_Right, elements[row * width + newCol]);
 	}
 
 	void setLinks() {

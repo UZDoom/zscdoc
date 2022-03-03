@@ -1,9 +1,9 @@
-class ElementContainer : Element {
-	protected Array<Element> elements;
+class ZF_ElementContainer : ZF_Element {
+	protected Array<ZF_Element> elements;
 
-	protected Animator animator;
+	protected ZF_Animator animator;
 	protected Object animStorage;
-	protected void setAnimator(Animator anim) {
+	protected void setAnimator(ZF_Animator anim) {
 		if (anim == NULL) return;
 		if (animator != NULL) {
 			if (animator == anim) { return; }
@@ -28,7 +28,7 @@ class ElementContainer : Element {
 	bool getTicksAnimator() { return self.ticksAnimator; }
 	void setTicksAnimator(bool ticksAnimator) { self.ticksAnimator = ticksAnimator; }
 
-	override void onBoxChanged(AABB old) {
+	override void onBoxChanged(ZF_AABB old) {
 		if (shouldUpdateAnimator()) { animator.boxChange(self, old, box, animStorage); }
 	}
 
@@ -57,10 +57,10 @@ class ElementContainer : Element {
 		if (hidden) { return; }
 
 		// stuff in the frame shouldn't draw outside the frame
-		AABB beforeClip; getClipAABB(beforeClip);
+		ZF_AABB beforeClip; getClipAABB(beforeClip);
 		if (master != NULL) {
-			AABB clipCoords; boxToScreen(clipCoords);
-			AABB screenClip;
+			ZF_AABB clipCoords; boxToScreen(clipCoords);
+			ZF_AABB screenClip;
 			screenClip.size = screenSize();
 			clipCoords.rectOfIntersection(clipCoords, screenClip);
 
@@ -77,7 +77,7 @@ class ElementContainer : Element {
 		}
 
 		if (!top) {
-			if (master == NULL && globalStore.focusPriority == FocusPriority_AboveAll) {
+			if (master == NULL && globalStore.focusPriority == ZF_FocusPriority_AboveAll) {
 				drawFocusIndicator(globalStore);
 			}
 		}
@@ -117,7 +117,7 @@ class ElementContainer : Element {
 		drawerInternal(true);
 	}
 	
-	override bool onNavEvent(NavEventType type, bool fromController) {
+	override bool onNavEvent(ZF_NavEventType type, bool fromController) {
 		for (int i = elements.size() - 1; i >= 0; i--) {
 			let elem = elements[i];
 			if (elem != NULL && !elem.hidden) {
@@ -128,7 +128,7 @@ class ElementContainer : Element {
 		return false;
 	}
 
-	override bool onUIEventPriority(UiEvent ev) {
+	override bool onUIEventPriority(ZF_UiEvent ev) {
 		let mousePos = getGlobalStore().mousePos;
 		for (int i = elements.size() - 1; i >= 0; i--) {
 			let elem = elements[i];
@@ -140,7 +140,7 @@ class ElementContainer : Element {
 		return false;
 	}
 
-	override bool onUIEvent(UiEvent ev) {
+	override bool onUIEvent(ZF_UiEvent ev) {
 		let mousePos = getGlobalStore().mousePos;
 		for (int i = elements.size() - 1; i >= 0; i--) {
 			let elem = elements[i];

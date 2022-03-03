@@ -1,66 +1,66 @@
-class ElementTreeGlobal {
+class ZF_ElementTreeGlobal {
 	Vector2 baseScreenSize;
 
 	bool blockMenuEvent;
 
-	Frame mainFrame;
-	Element hoverBlock;
+	ZF_Frame mainFrame;
+	ZF_Element hoverBlock;
 
-	Element focus;
-	Element focusIndicator;
-	FocusPriority focusPriority;
+	ZF_Element focus;
+	ZF_Element focusIndicator;
+	ZF_FocusPriority focusPriority;
 
 	Vector2 mousePos;
 
 	bool needsMouseUpdate;
 }
 
-enum NavEventType {
-	NavEventType_Left,
-	NavEventType_Right,
-	NavEventType_Up,
-	NavEventType_Down,
+enum ZF_NavEventType {
+	ZF_NavEventType_Left,
+	ZF_NavEventType_Right,
+	ZF_NavEventType_Up,
+	ZF_NavEventType_Down,
 
-	NavEventType_Tab,
+	ZF_NavEventType_Tab,
 
 	// not used for focus changing beyond this point
 
-	NavEventType_FocusChangeCount,
+	ZF_NavEventType_FocusChangeCount,
 
-	NavEventType_PageUp = NavEventType_FocusChangeCount,
-	NavEventType_PageDown,
+	ZF_NavEventType_PageUp = ZF_NavEventType_FocusChangeCount,
+	ZF_NavEventType_PageDown,
 
-	NavEventType_Confirm,
-	NavEventType_Deny
+	ZF_NavEventType_Confirm,
+	ZF_NavEventType_Deny
 }
 
-enum AlignType {
-	AlignType_Left    = 1,
-	AlignType_HCenter = 2,
-	AlignType_Right   = 3,
+enum ZF_AlignType {
+	ZF_AlignType_Left    = 1,
+	ZF_AlignType_HCenter = 2,
+	ZF_AlignType_Right   = 3,
 
-	AlignType_Top     = 1 << 4,
-	AlignType_VCenter = 2 << 4,
-	AlignType_Bottom  = 3 << 4,
+	ZF_AlignType_Top     = 1 << 4,
+	ZF_AlignType_VCenter = 2 << 4,
+	ZF_AlignType_Bottom  = 3 << 4,
 
-	AlignType_TopLeft   = AlignType_Top | AlignType_Left,
-	AlignType_TopCenter = AlignType_Top | AlignType_HCenter,
-	AlignType_TopRight  = AlignType_Top | AlignType_Right,
+	ZF_AlignType_TopLeft   = ZF_AlignType_Top | ZF_AlignType_Left,
+	ZF_AlignType_TopCenter = ZF_AlignType_Top | ZF_AlignType_HCenter,
+	ZF_AlignType_TopRight  = ZF_AlignType_Top | ZF_AlignType_Right,
 
-	AlignType_CenterLeft  = AlignType_VCenter | AlignType_Left,
-	AlignType_Center      = AlignType_VCenter | AlignType_HCenter,
-	AlignType_CenterRight = AlignType_VCenter | AlignType_Right,
+	ZF_AlignType_CenterLeft  = ZF_AlignType_VCenter | ZF_AlignType_Left,
+	ZF_AlignType_Center      = ZF_AlignType_VCenter | ZF_AlignType_HCenter,
+	ZF_AlignType_CenterRight = ZF_AlignType_VCenter | ZF_AlignType_Right,
 
-	AlignType_BottomLeft   = AlignType_Bottom | AlignType_Left,
-	AlignType_BottomCenter = AlignType_Bottom | AlignType_HCenter,
-	AlignType_BottomRight  = AlignType_Bottom | AlignType_Right,
+	ZF_AlignType_BottomLeft   = ZF_AlignType_Bottom | ZF_AlignType_Left,
+	ZF_AlignType_BottomCenter = ZF_AlignType_Bottom | ZF_AlignType_HCenter,
+	ZF_AlignType_BottomRight  = ZF_AlignType_Bottom | ZF_AlignType_Right,
 }
 
-class Element ui {
-	protected Element master;
+class ZF_Element ui {
+	protected ZF_Element master;
 
-	protected ElementTreeGlobal globalStore;
-	void setGlobalStore(ElementTreeGlobal globalStore) {
+	protected ZF_ElementTreeGlobal globalStore;
+	void setGlobalStore(ZF_ElementTreeGlobal globalStore) {
 		if (master == NULL) {
 			self.globalStore = globalStore;
 		}
@@ -73,14 +73,14 @@ class Element ui {
 		}
 	}
 
-	protected Handler cmdHandler;
-	Handler getCmdHandler() {return self.cmdHandler; }
-	void setCmdHandler(Handler cmdHandler) {self.cmdHandler = cmdHandler; }
+	protected ZF_Handler cmdHandler;
+	ZF_Handler getCmdHandler() {return self.cmdHandler; }
+	void setCmdHandler(ZF_Handler cmdHandler) {self.cmdHandler = cmdHandler; }
 	protected string command;
 	string getCommand() {return self.command; }
 	void setCommand(string command) {self.command = command; }
 
-	protected AABB box;
+	protected ZF_AABB box;
 	Vector2 getPos() { return self.box.pos; }
 	double getPosX() { return self.box.pos.x; }
 	double getPosY() { return self.box.pos.y; }
@@ -94,7 +94,7 @@ class Element ui {
 	void setWidth(double width) { boxChange(self.box.pos, (width, self.box.size.y)); }
 	void setHeight(double height) { boxChange(self.box.pos, (self.box.size.x, height)); }
 
-	void getBox(AABB box) {
+	void getBox(ZF_AABB box) {
 		box.pos = self.box.pos;
 		box.size = self.box.size;
 	}
@@ -104,19 +104,19 @@ class Element ui {
 	
 	void boxChange(Vector2 newPos, Vector2 newSize) {
 		if (newPos == box.pos && newSize == box.size) return;
-		AABB old; box.clone(old);
+		ZF_AABB old; box.clone(old);
 		box.pos = newPos;
 		box.size = newSize;
 		requestMouseUpdate();
 		onBoxChanged(old);
 	}
-	virtual void onBoxChanged(AABB old) {}
+	virtual void onBoxChanged(ZF_AABB old) {}
 
-	protected Element focusNeighbors[NavEventType_FocusChangeCount];
-	Element getFocusNeighbor(NavEventType type) {
+	protected ZF_Element focusNeighbors[ZF_NavEventType_FocusChangeCount];
+	ZF_Element getFocusNeighbor(ZF_NavEventType type) {
 		return self.focusNeighbors[type];
 	}
-	void setFocusNeighbor(NavEventType type, Element neighbor) {
+	void setFocusNeighbor(ZF_NavEventType type, ZF_Element neighbor) {
 		self.focusNeighbors[type] = neighbor;
 	}
 
@@ -144,7 +144,7 @@ class Element ui {
 	bool isHovered() { return self.elemHovered; }
 
 	bool containsMouse() {
-		AABB screenBox;
+		ZF_AABB screenBox;
 		boxToScreen(screenBox);
 		return screenBox.pointCollides(getGlobalStore().mousePos);
 	}
@@ -164,7 +164,7 @@ class Element ui {
 		}
 	}
 
-	void setHoverBlock(Element val) {
+	void setHoverBlock(ZF_Element val) {
 		let s = getGlobalStore();
 		if (s != NULL) {
 			s.hoverBlock = val;
@@ -179,7 +179,7 @@ class Element ui {
 		return false;
 	}
 
-	void getClipAABB(AABB curClip) {
+	void getClipAABB(ZF_AABB curClip) {
 		[curClip.pos.x, curClip.pos.y, curClip.size.x, curClip.size.y] = screen.GetClipRect();
 		if (curClip.size.x == -1) {
 			curClip.pos = (0, 0);
@@ -221,7 +221,7 @@ class Element ui {
 		return master.screenToRel(screenPos - box.pos);
 	}
 
-	protected ElementTreeGlobal getGlobalStore() {
+	protected ZF_ElementTreeGlobal getGlobalStore() {
 		if (globalStore != NULL) return globalStore;
 		if (master != NULL) {
 			globalStore = master.getGlobalStore();
@@ -246,23 +246,23 @@ class Element ui {
 		return screenSize();
 	}
 
-	void aabbToScreen(AABB ret, AABB bounds, bool intersect = true) {
+	void aabbToScreen(ZF_AABB ret, ZF_AABB bounds, bool intersect = true) {
 		ret.pos = relToScreen(bounds.pos) * getScale();
 		ret.size = bounds.size * getScale();
 
 		if (intersect && master != NULL) {
-			AABB screenBox; master.boxToScreen(screenBox, true);
+			ZF_AABB screenBox; master.boxToScreen(screenBox, true);
 			ret.rectOfIntersection(ret, screenBox);
 		}
 	}
 
 	/// Return a bounding box which uses absolute coordinates.
-	void boxToScreen(AABB ret, bool intersect = true) {
+	void boxToScreen(ZF_AABB ret, bool intersect = true) {
 		ret.pos = relToScreen((0, 0)) * getScale();
 		ret.size = box.size * getScale();
 
 		if (intersect && master != NULL) {
-			AABB screenBox; master.boxToScreen(screenBox, true);
+			ZF_AABB screenBox; master.boxToScreen(screenBox, true);
 			ret.rectOfIntersection(ret, screenBox);
 		}
 	}
@@ -292,22 +292,22 @@ class Element ui {
 	}
 
 	/// Gets the correct position to draw aligned content at.
-	Vector2 getAlignedDrawPos(Vector2 boxSize, Vector2 contentSize, AlignType align) {
+	Vector2 getAlignedDrawPos(Vector2 boxSize, Vector2 contentSize, ZF_AlignType align) {
 		Vector2 pos = (0, 0);
 		int horzAlign = align &  15;
 		int vertAlign = align & (15 << 4);
 
-		if (horzAlign == AlignType_HCenter) {
+		if (horzAlign == ZF_AlignType_HCenter) {
 			pos.x = (boxSize.x - contentSize.x) / 2.0;
 		}
-		else if (horzAlign == AlignType_Right) {
+		else if (horzAlign == ZF_AlignType_Right) {
 			pos.x = boxSize.x - contentSize.x;
 		}
 
-		if (vertAlign == AlignType_VCenter) {
+		if (vertAlign == ZF_AlignType_VCenter) {
 			pos.y = (boxSize.y - contentSize.y) / 2.0;
 		}
-		else if (vertAlign == AlignType_Bottom) {
+		else if (vertAlign == ZF_AlignType_Bottom) {
 			pos.y = boxSize.y - contentSize.y;
 		}
 
@@ -318,7 +318,7 @@ class Element ui {
 	double getDrawAlpha() {
 		double calcAlpha = 1;
 
-		Element elem = self;
+		ZF_Element elem = self;
 		while (elem) {
 			calcAlpha *= elem.alpha;
 			elem = elem.master;
@@ -327,12 +327,12 @@ class Element ui {
 		return calcAlpha;
 	}
 
-	void screenClip(AABB beforeClip, AABB clipRect, AABB aabb = NULL) {
+	void screenClip(ZF_AABB beforeClip, ZF_AABB clipRect, ZF_AABB aabb = NULL) {
 		getClipAABB(beforeClip);
 		if (aabb == NULL) boxToScreen(clipRect);
 		else aabbToScreen(clipRect, aabb);
 		clipRect.rectOfIntersection(clipRect, beforeClip);
-		AABB screenClip;
+		ZF_AABB screenClip;
 		screenClip.size = screenSize();
 		clipRect.rectOfIntersection(clipRect, screenClip);
 	}
@@ -351,7 +351,7 @@ class Element ui {
 		Vector2 drawPosEnd = relToScreen(end) * getScale();
 		thickness *= getScale();
 
-		AABB aabb; getClipAABB(aabb);
+		ZF_AABB aabb; getClipAABB(aabb);
 		bool draw;
 		Vector2 clippedStart, clippedEnd;
 		[draw, clippedStart, clippedEnd] = aabb.cohenSutherlandClip(drawPosStart, drawPosEnd);
@@ -366,10 +366,10 @@ class Element ui {
 	}
 
 	/// Draws an image, taking into account relative positioning, and scale factor.
-	void drawImage(Vector2 relPos, string imageName, bool animate, Vector2 scale = (1, 1), double alpha = 1, AABB clipRect = NULL) {
+	void drawImage(Vector2 relPos, string imageName, bool animate, Vector2 scale = (1, 1), double alpha = 1, ZF_AABB clipRect = NULL) {
 		if (scale.x == 0 || scale.y == 0) return;
 
-		AABB c;
+		ZF_AABB c;
 		if (clipRect == NULL) {
 			getClipAABB(c);
 		}
@@ -441,7 +441,7 @@ class Element ui {
 		shape2DAddQuad(shape, absPos, scaledSize, (0, 0), (xSize, ySize), vertCount);
 
 		let texID = TexMan.checkForTexture(imageName, TexMan.Type_Any);
-		AABB clipRect; getClipAABB(clipRect);
+		ZF_AABB clipRect; getClipAABB(clipRect);
 		Screen.drawShape(texID, animate, shape, DTA_Alpha, alpha * getDrawAlpha(), DTA_ClipLeft, int(floor(clipRect.pos.x)), DTA_ClipTop, int(floor(clipRect.pos.y)), DTA_ClipRight, int(ceil(clipRect.pos.x + clipRect.size.x)), DTA_ClipBottom, int (ceil(clipRect.pos.y + clipRect.size.y)));
 
 		shape.clear();
@@ -450,11 +450,11 @@ class Element ui {
 
 	/// Draws a coloured region, taking into account relative positioning, and scale factor.
 	void fill(Vector2 relStartPos, Vector2 size, Color col, double amount) {
-		AABB aabb;
+		ZF_AABB aabb;
 		Vector2 startPos = relToScreen(relStartPos) * getScale();
 		aabb.pos = startPos;
 		aabb.size = size * getScale();
-		AABB clip;
+		ZF_AABB clip;
 		getClipAABB(clip);
 		aabb.rectOfIntersection(aabb, clip);
 		
@@ -464,7 +464,7 @@ class Element ui {
 	}
 
 	/// Packs the element into the master frame.
-	void pack(Frame master) {
+	void pack(ZF_Frame master) {
 		master.internalPack(self);
 		requestMouseUpdate();
 	}
@@ -474,20 +474,20 @@ class Element ui {
 		if (master == NULL) {
 			return;
 		}
-		if (!(master is "Frame")) {
+		if (!(master is "ZF_Frame")) {
 			throwAbortException("Tried to unpack a non-frame-bound element");
 		}
 
 		requestMouseUpdate();
 
-		let masterFrame = Frame(master);
+		let masterFrame = ZF_Frame(master);
 		masterFrame.internalUnpack(self);
 	}
 
-	void drawFocusIndicator(ElementTreeGlobal globalStore) {
+	void drawFocusIndicator(ZF_ElementTreeGlobal globalStore) {
 		if (globalStore.focusIndicator == NULL) return;
 
-		AABB beforeClip;
+		ZF_AABB beforeClip;
 		getClipAABB(beforeClip);
 		Screen.clearClipRect();
 
@@ -500,13 +500,13 @@ class Element ui {
 		Screen.setClipRect(int(beforeClip.pos.x), int(beforeClip.pos.y), int(beforeClip.size.x), int(beforeClip.size.y));
 	}
 
-	void drawSubElement(Element elem) {
+	void drawSubElement(ZF_Element elem) {
 		let globalStore = getGlobalStore();
-		if (globalStore.focusPriority == FocusPriority_JustBelowFocused && elem == globalStore.focus) {
+		if (globalStore.focusPriority == ZF_FocusPriority_JustBelowFocused && elem == globalStore.focus) {
 			drawFocusIndicator(globalStore);
 		}
 		elem.drawer();
-		if (globalStore.focusPriority == FocusPriority_JustAboveFocused && elem == globalStore.focus) {
+		if (globalStore.focusPriority == ZF_FocusPriority_JustAboveFocused && elem == globalStore.focus) {
 			drawFocusIndicator(globalStore);
 		}
 	}
@@ -523,25 +523,25 @@ class Element ui {
 	virtual bool handlePriorityMouseBlock(bool mouseBlock, Vector2 mousePos) { return mouseBlock || blocksMousePriority(mousePos); }
 	virtual void drawer() {}
 	virtual void topDrawer() {}
-	virtual bool onNavEvent(NavEventType type, bool fromController) { return false; }
-	virtual bool onUIEvent(UiEvent ev) { return false; }
-	virtual bool onUIEventPriority(UiEvent ev) { return false; }
+	virtual bool onNavEvent(ZF_NavEventType type, bool fromController) { return false; }
+	virtual bool onUIEvent(ZF_UiEvent ev) { return false; }
+	virtual bool onUIEventPriority(ZF_UiEvent ev) { return false; }
 
 	virtual bool blocksMousePriority(Vector2 mousePos) { return false; }
 	virtual bool blocksMouse(Vector2 mousePos) {
 		if (dontBlockMouse) return false;
-		AABB screenBox; boxToScreen(screenBox);
+		ZF_AABB screenBox; boxToScreen(screenBox);
 		return screenBox.pointCollides(mousePos);
 	}
 
 	virtual bool handleBack() { return false; }
 
-	virtual void getFocusAABB(AABB box) { box.pos = relToMainFrame((0, 0)); box.size = self.box.size; }
-	virtual void beenFocused(NavEventType type) {}
+	virtual void getFocusAABB(ZF_AABB box) { box.pos = relToMainFrame((0, 0)); box.size = self.box.size; }
+	virtual void beenFocused(ZF_NavEventType type) {}
 
 	// Added by Chronos "phantombeta" Ouroboros
 	bool isEnabled() {
-		Element elem = self;
+		ZF_Element elem = self;
 		while (elem) {
 			if (elem.disabled) {
 				return false;
@@ -554,7 +554,7 @@ class Element ui {
 	}
 
 	virtual void doHover (bool mouseBlock, Vector2 mousePos) {
-		AABB screenBox; boxToScreen(screenBox);
+		ZF_AABB screenBox; boxToScreen(screenBox);
 		bool hover = (getHoverBlock() || mouseBlock) ? false : screenBox.pointCollides(mousePos);
 
 		if (hover && !elemHovered) {

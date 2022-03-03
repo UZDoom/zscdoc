@@ -1,28 +1,28 @@
-class Handler ui {
-	virtual void buttonClickCommand(Button caller, string command) {
+class ZF_Handler ui {
+	virtual void buttonClickCommand(ZF_Button caller, string command) {
 	}
 	
-	virtual void buttonHeldCommand(Button caller, string command) {
+	virtual void buttonHeldCommand(ZF_Button caller, string command) {
 	}
 
-	virtual void radioButtonChanged(RadioButton caller, string command, RadioController variable) {
+	virtual void radioButtonChanged(ZF_RadioButton caller, string command, ZF_RadioController variable) {
 	}
 
-	virtual void toggleButtonChanged(ToggleButton caller, string command, bool on) {
+	virtual void toggleButtonChanged(ZF_ToggleButton caller, string command, bool on) {
 	}
 
-	virtual void textInputExit(TextInput caller, string command) {
+	virtual void textInputExit(ZF_TextInput caller, string command) {
 	}
 
-	virtual void textInputChanged(TextInput caller, string command) {
+	virtual void textInputChanged(ZF_TextInput caller, string command) {
 	}
 
-	virtual void sliderChanged(Slider caller, string command) {
+	virtual void sliderChanged(ZF_Slider caller, string command) {
 	}
 
-	virtual void dropdownChanged(DropdownList caller, string command) {
+	virtual void dropdownChanged(ZF_DropdownList caller, string command) {
 	}
 
-	virtual void elementHoverChanged(Element caller, string command, bool unhovered) {
+	virtual void elementHoverChanged(ZF_Element caller, string command, bool unhovered) {
 	}
 }

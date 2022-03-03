@@ -1,37 +1,37 @@
-enum FocusPriority {
-	FocusPriority_AboveAll,
-	FocusPriority_JustBelowFocused,
-	FocusPriority_JustAboveFocused,
+enum ZF_FocusPriority {
+	ZF_FocusPriority_AboveAll,
+	ZF_FocusPriority_JustBelowFocused,
+	ZF_FocusPriority_JustAboveFocused,
 }
 
 /// The base menu class for menus to inherit from.
 /// Contains a mainFrame to put items in.
-class GenericMenu : GenericMenu {
-	Frame mainFrame;
+class ZF_GenericMenu : GenericMenu {
+	ZF_Frame mainFrame;
 
-	Element focusDefaults[NavEventType_FocusChangeCount];
+	ZF_Element focusDefaults[ZF_NavEventType_FocusChangeCount];
 
-	private ElementTreeGlobal globalStore;
+	private ZF_ElementTreeGlobal globalStore;
 
 	Vector2 getMousePos() { return globalStore.mousePos; }
 
-	void setFocus(Element elem, NavEventType type) {
+	void setFocus(ZF_Element elem, ZF_NavEventType type) {
 		let old = globalStore.focus;
 		globalStore.focus = elem;
 		elem.beenFocused(type);
 		changeFocusIndicator(old, globalStore.focus);
 		if (globalStore.focusIndicator != NULL) globalStore.focusIndicator.show();
 	}
-	Element getFocusIndicator() { return globalStore.focusIndicator; }
-	void setFocusIndicator(Element focusIndicator) { globalStore.focusIndicator = focusIndicator; }
+	ZF_Element getFocusIndicator() { return globalStore.focusIndicator; }
+	void setFocusIndicator(ZF_Element focusIndicator) { globalStore.focusIndicator = focusIndicator; }
 
-	FocusPriority getFocusPriority() { return globalStore.focusPriority; }
-	void setFocusPriority(FocusPriority focusPriority) { globalStore.focusPriority = focusPriority; }
+	ZF_FocusPriority getFocusPriority() { return globalStore.focusPriority; }
+	void setFocusPriority(ZF_FocusPriority focusPriority) { globalStore.focusPriority = focusPriority; }
 
 	override void init(Menu parent) {
 		Super.init(parent);
-		mainFrame = Frame.create((0, 0), (320, 200));
-		globalStore = new("ElementTreeGlobal");
+		mainFrame = ZF_Frame.create((0, 0), (320, 200));
+		globalStore = new("ZF_ElementTreeGlobal");
 		mainFrame.setGlobalStore(globalStore);
 		mainFrame.setBaseResolution((320, 200));
 		globalStore.mainFrame = mainFrame;
@@ -68,7 +68,7 @@ class GenericMenu : GenericMenu {
 
 	override void drawer() {
 		if (globalStore.focus != NULL) {
-			AABB box;
+			ZF_AABB box;
 			globalStore.focus.getFocusAABB(box);
 			positionFocusIndicator(box.pos, box.size);
 		}
@@ -83,18 +83,18 @@ class GenericMenu : GenericMenu {
 	}
 
 	virtual void setupFocusIndicator() {}
-	virtual void changeFocusIndicator(Element oldFocus, Element newFocus) {}
+	virtual void changeFocusIndicator(ZF_Element oldFocus, ZF_Element newFocus) {}
 	virtual void positionFocusIndicator(Vector2 pos, Vector2 size) {}
 
-	void fireNavigationEvent(NavEventType type, bool fromController) {
-		if (type == NavEventType_Deny) {
+	void fireNavigationEvent(ZF_NavEventType type, bool fromController) {
+		if (type == ZF_NavEventType_Deny) {
 			handleBack();
 		}
 
 		if (mainFrame.onNavEvent(type, fromController)) return;
 
-		if (type < NavEventType_FocusChangeCount) {
-			Element newFocus;
+		if (type < ZF_NavEventType_FocusChangeCount) {
+			ZF_Element newFocus;
 			if (globalStore.focus == NULL) {
 				newFocus = focusDefaults[type];
 			} else {
@@ -129,9 +129,9 @@ class GenericMenu : GenericMenu {
 			SetCapture(false);
 		}
 
-		UiEvent zfEv;
+		ZF_UiEvent zfEv;
 
-		UiEvent.fromGZDUiEvent(ev, zfEv);
+		ZF_UiEvent.fromGZDUiEvent(ev, zfEv);
 		if (mainFrame.onUIEventPriority(zfEv)) return true;
 		if (mainFrame.onUIEvent(zfEv)) return true;
 
@@ -142,29 +142,29 @@ class GenericMenu : GenericMenu {
 		if (globalStore != NULL && globalStore.blockMenuEvent) return true;
 
 		switch (mkey) {
-		case MKEY_Up:    fireNavigationEvent(NavEventType_Up, fromcontroller); break;
-		case MKEY_Down:  fireNavigationEvent(NavEventType_Down, fromcontroller); break;
-		case MKEY_Left:  fireNavigationEvent(NavEventType_Left, fromcontroller); break;
-		case MKEY_Right: fireNavigationEvent(NavEventType_Right, fromcontroller); break;
+		case MKEY_Up:    fireNavigationEvent(ZF_NavEventType_Up, fromcontroller); break;
+		case MKEY_Down:  fireNavigationEvent(ZF_NavEventType_Down, fromcontroller); break;
+		case MKEY_Left:  fireNavigationEvent(ZF_NavEventType_Left, fromcontroller); break;
+		case MKEY_Right: fireNavigationEvent(ZF_NavEventType_Right, fromcontroller); break;
 
-		case MKEY_PageUp:   fireNavigationEvent(NavEventType_PageUp, fromcontroller); break;
-		case MKEY_PageDown: fireNavigationEvent(NavEventType_PageDown, fromcontroller); break;
+		case MKEY_PageUp:   fireNavigationEvent(ZF_NavEventType_PageUp, fromcontroller); break;
+		case MKEY_PageDown: fireNavigationEvent(ZF_NavEventType_PageDown, fromcontroller); break;
 
-		case MKEY_Enter: fireNavigationEvent(NavEventType_Confirm, fromcontroller); break;
-		case MKEY_Back:  fireNavigationEvent(NavEventType_Deny, fromcontroller); break;
+		case MKEY_Enter: fireNavigationEvent(ZF_NavEventType_Confirm, fromcontroller); break;
+		case MKEY_Back:  fireNavigationEvent(ZF_NavEventType_Deny, fromcontroller); break;
 		}
 		return true;
 	}
 }
 
-class EventHandlerMenu ui {
-	Frame mainFrame;
+class ZF_EventHandlerMenu ui {
+	ZF_Frame mainFrame;
 
 	protected bool useCustomCursor;
 	protected string customCursor;
 
 	virtual void init() {
-		mainFrame = Frame.create((0, 0), (320, 200));
+		mainFrame = ZF_Frame.create((0, 0), (320, 200));
 		mainFrame.setBaseResolution((320, 200));
 	}
 
@@ -183,7 +183,7 @@ class EventHandlerMenu ui {
 
 	protected virtual void ticker() {
 		// Trigger a mouse movement UI event to fix things "sticking" sometimes
-		UiEvent zfEv;
+		ZF_UiEvent zfEv;
 		zfEv.type = UIEvent.Type_MouseMove;
 		zfEv.mouseX = inputProc_MouseX;
 		zfEv.mouseY = inputProc_MouseY;
@@ -211,9 +211,9 @@ class EventHandlerMenu ui {
 			handleBack();
 		}
 
-		UiEvent zfEv;
+		ZF_UiEvent zfEv;
 
-		UiEvent.fromGZDUiEvent(ev, zfEv);
+		ZF_UiEvent.fromGZDUiEvent(ev, zfEv);
 		if (mainFrame.onUIEventPriority(zfEv)) return true;
 		mainFrame.onUIEvent(zfEv);
 		return true;
@@ -234,13 +234,13 @@ class EventHandlerMenu ui {
 		inputProc_MouseY = posY;
 	}
 
-	void copyCustomMousePosition(EventHandlerMenu other) {
+	void copyCustomMousePosition(ZF_EventHandlerMenu other) {
 		inputProc_MouseX = other.inputProc_MouseX;
 		inputProc_MouseY = other.inputProc_MouseY;
 	}
 
 	void onInputEvent(InputEvent gzdEv) {
-		UiEvent ev;
+		ZF_UiEvent ev;
 
 		ev.KeyString = gzdEv.KeyString;
 		ev.KeyChar = gzdEv.KeyChar;

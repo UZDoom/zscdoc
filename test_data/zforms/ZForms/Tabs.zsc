@@ -1,7 +1,7 @@
-class Tabs : ElementContainer {
-	protected Array<RadioButton> tabLabels;
-	protected Array<Frame> tabFrames;
-	protected RadioController curTab;
+class ZF_Tabs : ZF_ElementContainer {
+	protected Array<ZF_RadioButton> tabLabels;
+	protected Array<ZF_Frame> tabFrames;
+	protected ZF_RadioController curTab;
 
 	protected double tabHeight;
 	double getTabHeight() { return self.tabHeight; }
@@ -26,7 +26,7 @@ class Tabs : ElementContainer {
 	double getTabTextScale() { return self.tabTextScale; }
 	void setTabTextScale(double tabTextScale) { self.tabTextScale = tabTextScale; }
 
-	protected ButtonAnimator buttonAnimator;
+	protected ZF_ButtonAnimator buttonAnimator;
 
 	protected uint tabFocus;
 
@@ -47,7 +47,7 @@ class Tabs : ElementContainer {
 	
 	void config(
 		double tabHeight, double tabLabelMargin, Font tabFont = NULL, double tabTextScale = 1.0,
-		ButtonAnimator buttonAnimator = NULL
+		ZF_ButtonAnimator buttonAnimator = NULL
 	) {
 		self.setBoxes = false;
 
@@ -63,36 +63,36 @@ class Tabs : ElementContainer {
 		setTabLabelBoxes();
 	}
 
-	static Tabs create(
+	static ZF_Tabs create(
 		Vector2 pos, Vector2 size,
 		double tabHeight, double tabLabelMargin, Font tabFont = NULL, double tabTextScale = 1.0,
-		ButtonAnimator buttonAnimator = NULL
+		ZF_ButtonAnimator buttonAnimator = NULL
 	) {
-		let ret = new("Tabs");
+		let ret = new("ZF_Tabs");
 
 		ret.setBox(pos, size);
-		ret.curTab = new("RadioController");
+		ret.curTab = new("ZF_RadioController");
 		ret.config(tabHeight, tabLabelMargin, tabFont, tabTextScale, buttonAnimator);
 
 		return ret;
 	}
 
-	override void getFocusAABB(AABB box) {
+	override void getFocusAABB(ZF_AABB box) {
 		let label = tabLabels[tabFocus];
 		box.pos = label.relToMainFrame((0, 0));
 		box.size = label.box.size;
 	}
 
-	override void beenFocused(NavEventType type) {
+	override void beenFocused(ZF_NavEventType type) {
 		switch (type) {
-		case NavEventType_Left: tabFocus = tabLabels.size() - 1; break;
+		case ZF_NavEventType_Left: tabFocus = tabLabels.size() - 1; break;
 
-		case NavEventType_Right:
-		case NavEventType_Tab:
+		case ZF_NavEventType_Right:
+		case ZF_NavEventType_Tab:
 			tabFocus = 0; break;
 
-		case NavEventType_Down:
-		case NavEventType_Up:
+		case ZF_NavEventType_Down:
+		case ZF_NavEventType_Up:
 			tabFocus = curTab.curVal; break;
 		}
 	}
@@ -105,8 +105,8 @@ class Tabs : ElementContainer {
 	}
 
 	void addTab(string label) {
-		let button = RadioButton.create((0, 0), (0, 0), curTab, 0, text: label);
-		let frame = Frame.create((0.0, tabHeight), (box.size.x, box.size.y - tabHeight));
+		let button = ZF_RadioButton.create((0, 0), (0, 0), curTab, 0, text: label);
+		let frame = ZF_Frame.create((0.0, tabHeight), (box.size.x, box.size.y - tabHeight));
 
 		button.master = self;
 		frame.master = self;
@@ -122,7 +122,7 @@ class Tabs : ElementContainer {
 		showCorrectTab();
 	}
 
-	Frame getTabFrame(int index) {
+	ZF_Frame getTabFrame(int index) {
 		return tabFrames[index];
 	}
 
@@ -142,22 +142,22 @@ class Tabs : ElementContainer {
 		Super.drawer();
 	}
 
-	override bool onNavEvent(NavEventType type, bool fromController) {
+	override bool onNavEvent(ZF_NavEventType type, bool fromController) {
 		if (isFocused() && isEnabled()) {
 			switch (type) {
-			case NavEventType_Right:
+			case ZF_NavEventType_Right:
 				if (tabFocus != tabLabels.size() - 1) {
 					tabFocus += 1;
 					return true;
 				}
 				break;
-			case NavEventType_Left:
+			case ZF_NavEventType_Left:
 				if (tabFocus != 0) {
 					tabFocus -= 1;
 					return true;
 				}
 				break;
-			case NavEventType_Confirm:
+			case ZF_NavEventType_Confirm:
 				curTab.curVal = tabFocus;
 				break;
 			}

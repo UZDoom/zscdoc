@@ -1,10 +1,5 @@
 /// Bounding box class for positioning items.
-struct AABB {
-	/// heya
-	// test
-	/// yo!
-	const SOMETHING = 14;
-
+struct ZF_AABB {
 	Vector2 pos;
 	Vector2 size;
 
@@ -16,7 +11,7 @@ struct AABB {
 		return false;
 	}
 
-	void rectOfIntersection(AABB ret, AABB other) {
+	void rectOfIntersection(ZF_AABB ret, ZF_AABB other) {
 		double left = max(pos.x, other.pos.x);
 		double right = min(pos.x + size.x, other.pos.x + other.size.x);
 		double top = max(pos.y, other.pos.y);
@@ -29,7 +24,7 @@ struct AABB {
 		}
 	}
 
-	void clone(AABB cloneTo) {
+	void clone(ZF_AABB cloneTo) {
 		cloneTo.pos = pos;
 		cloneTo.size = size;
 	}

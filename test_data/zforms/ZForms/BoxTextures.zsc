@@ -1,5 +1,5 @@
 /// Used to determine what to be drawn to the screen for boxes.
-class BoxTextures ui {
+class ZF_BoxTextures ui {
 	private string boxTexture;
 	string getBoxTexture() { return boxTexture; }
 
@@ -15,8 +15,8 @@ class BoxTextures ui {
 	private Vector2 midSliceBottomRight;
 	Vector2 getMidSliceBottomRight() { return midSliceBottomRight; }
 
-	static BoxTextures createSingleTexture(string tex, bool scaleTex) {
-		let ret = new('BoxTextures');
+	static ZF_BoxTextures createSingleTexture(string tex, bool scaleTex) {
+		let ret = new('ZF_BoxTextures');
 
 		ret.setSingleTexture(tex);
 		ret.scaleMiddle = scaleTex;
@@ -24,11 +24,11 @@ class BoxTextures ui {
 		return ret;
 	}
 
-	static BoxTextures createTexturePixels(
+	static ZF_BoxTextures createTexturePixels(
 		string boxTex, Vector2 topLeft, Vector2 bottomRight, bool scaleSides,
 		bool scaleMiddle
 	) {
-		let ret = new('BoxTextures');
+		let ret = new('ZF_BoxTextures');
 
 		ret.setTexturePixels(boxTex, topLeft, bottomRight);
 		ret.scaleSides = scaleSides;
@@ -37,11 +37,11 @@ class BoxTextures ui {
 		return ret;
 	}
 
-	static BoxTextures createTextureNormalized(
+	static ZF_BoxTextures createTextureNormalized(
 		string boxTex, Vector2 topLeft, Vector2 bottomRight, bool scaleSides,
 		bool scaleMiddle
 	) {
-		let ret = new('BoxTextures');
+		let ret = new('ZF_BoxTextures');
 
 		ret.setTextureNormalized(boxTex, topLeft, bottomRight);
 		ret.scaleSides = scaleSides;

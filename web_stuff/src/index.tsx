@@ -5,33 +5,14 @@ import "./style.scss";
 import { h } from "tsx-dom";
 import * as fuzzysort from "fuzzysort";
 
-declare global {
-    interface Window {
-        toggle_vis: (id: string) => void;
-        toggle_sidebar: () => void;
-        close_sidebar: () => void;
-    }
-}
-window.toggle_vis = function (id: string) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const elem = document.getElementById(id)!;
+function toggle_vis(elem: HTMLElement, button: HTMLElement) {
     elem.classList.toggle("hide");
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const button = document.getElementById(id + ".vis_button")!;
     const new_text = elem.classList.contains("hide")
         ? button.innerText.replace("-", "+")
         : button.innerText.replace("+", "-");
     button.innerText = new_text;
-};
-window.toggle_sidebar = function () {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const elem = document.getElementById("sidebar")!;
-    if (elem.style.transform == "translateX(-100%)") {
-        elem.style.transform = "translateX(0%)";
-    } else {
-        elem.style.transform = "translateX(-100%)";
-    }
-};
+}
+
 let mobile = false;
 let sidebar_active = false;
 
@@ -39,34 +20,30 @@ function make_invisible(this: HTMLElement) {
     this.style.visibility = "hidden";
 }
 
-window.toggle_sidebar = function () {
+function toggle_sidebar(sidebar: HTMLElement) {
     if (!mobile) {
         return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const elem = document.getElementById("sidebar")!;
-    elem.removeEventListener("transitionend", make_invisible);
+    sidebar.removeEventListener("transitionend", make_invisible);
     if (!sidebar_active) {
-        elem.style.transform = "translateX(0%)";
-        elem.style.visibility = "visible";
+        sidebar.style.transform = "translateX(0%)";
+        sidebar.style.visibility = "visible";
         sidebar_active = true;
     } else {
-        elem.style.transform = "translateX(-100%)";
-        elem.addEventListener("transitionend", make_invisible);
+        sidebar.style.transform = "translateX(-100%)";
+        sidebar.addEventListener("transitionend", make_invisible);
         sidebar_active = false;
     }
-};
-window.close_sidebar = function () {
+}
+function close_sidebar(sidebar: HTMLElement) {
     if (!mobile) {
         return;
     }
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const elem = document.getElementById("sidebar")!;
-    elem.removeEventListener("transitionend", make_invisible);
-    elem.style.transform = "translateX(-100%)";
-    elem.addEventListener("transitionend", make_invisible);
+    sidebar.removeEventListener("transitionend", make_invisible);
+    sidebar.style.transform = "translateX(-100%)";
+    sidebar.addEventListener("transitionend", make_invisible);
     sidebar_active = false;
-};
+}
 
 const mq = window.matchMedia("(min-width: 481px)");
 function size_change(mq: MediaQueryList | MediaQueryListEvent) {
@@ -95,18 +72,28 @@ window.addEventListener("DOMContentLoaded", () => {
                 continue;
             }
             button.style.visibility = "visible";
+            button.onclick = () => {
+                toggle_vis(el as HTMLElement, button);
+            };
         }
     }
     {
         const els = document.getElementsByClassName("collapsed_by_default");
         for (const el of els) {
-            window.toggle_vis(el.id);
+            const button_id = el.id + ".vis_button";
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const button = document.getElementById(button_id)!;
+            toggle_vis(el as HTMLElement, button);
         }
     }
     {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const elem = document.getElementById("sidebar")!;
         const els = document.getElementsByClassName("sidebar_clickable");
         for (const el of els) {
-            el.addEventListener("click", window.close_sidebar);
+            (el as HTMLElement).onclick = () => {
+                close_sidebar(elem);
+            };
         }
     }
     {
@@ -118,6 +105,11 @@ window.addEventListener("DOMContentLoaded", () => {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const el = document.getElementById("header_button")!;
         el.style.display = "block";
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const elem = document.getElementById("sidebar")!;
+        el.onclick = () => {
+            toggle_sidebar(elem);
+        };
     }
     size_change(mq);
 });

@@ -1,8 +1,8 @@
 /// Frame class - one frame at least is used in any menu, but frames can be put in frames
 /// for easy subpositioning.
-class Frame : ElementContainer {
+class ZF_Frame : ZF_ElementContainer {
 	uint elementCount() { return elements.size(); }
-	uint indexOfElement(Element elem) { return elements.find(elem); }
+	uint indexOfElement(ZF_Element elem) { return elements.find(elem); }
 	void swapElements(uint index0, uint index1) {
 		let tmp = elements[index0];
 		elements[index0] = elements[index1];
@@ -16,7 +16,7 @@ class Frame : ElementContainer {
 		elements.insert(afterIndex, tmp);
 	}
 
-	void internalPack(Element elem) {
+	void internalPack(ZF_Element elem) {
 		if (elem.master != NULL) {
 			elem.unpack();
 		}
@@ -24,7 +24,7 @@ class Frame : ElementContainer {
 		self.elements.push(elem);
 		self.onPack(elem);
 	}
-	void internalUnpack(Element elem) {
+	void internalUnpack(ZF_Element elem) {
 		if (elem.master != self) {
 			throwAbortException("This shouldn't happen unless the user called internalUnpack themselves");
 		}
@@ -36,8 +36,8 @@ class Frame : ElementContainer {
 		elem.globalStore = NULL;
 	}
 
-	static Frame create(Vector2 pos, Vector2 size) {
-		let ret = new('Frame');
+	static ZF_Frame create(Vector2 pos, Vector2 size) {
+		let ret = new('ZF_Frame');
 
 		ret.setBox(pos, size);
 		ret.alpha = 1;
@@ -45,7 +45,7 @@ class Frame : ElementContainer {
 		return ret;
 	}
 
-	virtual void onPack(Element elem) {}
+	virtual void onPack(ZF_Element elem) {}
 
 	/// Converts relative positioning to screen positioning.
 	override Vector2 relToScreen(Vector2 relPos) {

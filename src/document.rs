@@ -458,9 +458,23 @@ fn reconstruct_static_const_array_declaration(
     ret
 }
 
+fn transform_deprecated(d: &hir::Deprecated) -> Deprecated {
+    Deprecated {
+        version: format!(
+            "{}.{}.{}",
+            d.version.major, d.version.minor, d.version.revision
+        ),
+        reason: d
+            .message
+            .map(|s| s.symbol.string().to_string())
+            .unwrap_or_else(|| "".to_string()),
+    }
+}
+
 fn class_doc(
     name: &str,
     context: &[NameSymbol],
+    hir: &hir::TopLevel,
     c: &hir::ClassDefinition,
     files: &Files,
     item_provider: &ItemProvider,
@@ -487,6 +501,44 @@ fn class_doc(
         match &node[0].kind {
             hir::ClassInnerKind::FunctionDeclaration(f) => {
                 let owner = Owner::Class(vec![name.to_string()]);
+                let overrides = if f.flags.contains(hir::FunctionFlags::OVERRIDE) {
+                    let mut cur = c;
+                    let mut closure = || loop {
+                        let ancestor_id = if let Some(a) = cur.ancestor {
+                            a
+                        } else {
+                            break None;
+                        };
+                        let ancestor = hir.definitions.get(&ancestor_id.symbol)?.iter().find_map(
+                            |t| match &t.kind {
+                                hir::TopLevelDefinitionKind::Class(c) => Some(c),
+                                _ => None,
+                            },
+                        )?;
+                        if let Some(func) = ancestor.inners.get(&f.name.symbol).and_then(|v| {
+                            v.iter().find_map(|i| match &i.kind {
+                                hir::ClassInnerKind::FunctionDeclaration(f) => Some(f),
+                                _ => None,
+                            })
+                        }) {
+                            if func.flags.contains(hir::FunctionFlags::VIRTUAL) {
+                                let class_name = files.text_from_span(ancestor.name.span);
+                                let func_name = files.text_from_span(func.name.span);
+                                break Some(LinkedSection {
+                                    text: format!("{}.{}", class_name, func_name),
+                                    kind: LinkedSectionKind::Function {
+                                        owner: Owner::Class(vec![class_name.to_string()]),
+                                        link: func_name.to_string(),
+                                    },
+                                });
+                            }
+                        }
+                        cur = ancestor;
+                    };
+                    closure()
+                } else {
+                    None
+                };
                 let func_to_add = Function {
                     context: class_to_add.context.clone(),
                     name: inner_name.to_string(),
@@ -502,6 +554,8 @@ fn class_doc(
                         &class_to_add.context,
                         files,
                     ),
+                    overrides,
+                    deprecated: f.deprecated.as_ref().map(transform_deprecated),
                 };
                 if f.flags.contains(hir::FunctionFlags::OVERRIDE) {
                     class_to_add.overrides.push(func_to_add);
@@ -530,6 +584,7 @@ fn class_doc(
                         &class_to_add.context,
                         files,
                     ),
+                    deprecated: m.deprecated.as_ref().map(transform_deprecated),
                 };
                 if m.flags.contains(hir::MemberFlags::PRIVATE) {
                     class_to_add.private.variables.push(var_to_add);
@@ -652,6 +707,8 @@ fn struct_doc(
                         &struct_to_add.context,
                         files,
                     ),
+                    overrides: None,
+                    deprecated: f.deprecated.as_ref().map(transform_deprecated),
                 };
                 if f.flags.contains(hir::FunctionFlags::PRIVATE) {
                     struct_to_add.private.functions.push(func_to_add);
@@ -678,6 +735,7 @@ fn struct_doc(
                         &struct_to_add.context,
                         files,
                     ),
+                    deprecated: m.deprecated.as_ref().map(transform_deprecated),
                 };
                 if m.flags.contains(hir::MemberFlags::PRIVATE) {
                     struct_to_add.private.variables.push(var_to_add);
@@ -799,7 +857,7 @@ pub fn hir_to_doc_structures(
         let name = files.text_from_span(node[0].name().span);
         match &node[0].kind {
             hir::TopLevelDefinitionKind::Class(c) => {
-                let class_to_add = class_doc(name, &[], c, files, item_provider);
+                let class_to_add = class_doc(name, &[], hir, c, files, item_provider);
                 docs.classes.push(class_to_add);
             }
             hir::TopLevelDefinitionKind::Struct(s) => {

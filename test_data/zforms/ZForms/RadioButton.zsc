@@ -1,11 +1,11 @@
-class RadioController {
+class ZF_RadioController {
 	int curVal;
 }
 
-class RadioButton : ButtonBase {
-	protected RadioController variable;
-	RadioController getVariable() { return self.variable; }
-	void setVariable(RadioController variable) { self.variable = variable; }
+class ZF_RadioButton : ZF_ButtonBase {
+	protected ZF_RadioController variable;
+	ZF_RadioController getVariable() { return self.variable; }
+	void setVariable(ZF_RadioController variable) { self.variable = variable; }
 
 	protected int value;
 	int getValue() { return self.value; }
@@ -15,10 +15,10 @@ class RadioButton : ButtonBase {
 	protected bool hover;
 
 	void config(
-		RadioController variable, int value,
-		ButtonAnimator animator = NULL,
+		ZF_RadioController variable, int value,
+		ZF_ButtonAnimator animator = NULL,
 		string text = "", Font fnt = NULL, double textScale = 1, int textColor = Font.CR_WHITE,
-		AlignType alignment = AlignType_Center, Handler cmdHandler = NULL, string command = ""
+		ZF_AlignType alignment = ZF_AlignType_Center, ZF_Handler cmdHandler = NULL, string command = ""
 	) {
 		setAnimator(animator);
 
@@ -29,7 +29,7 @@ class RadioButton : ButtonBase {
 		setAlignment(alignment);
 		setVariable(variable);
 		setValue(value);
-		ButtonState initial;
+		ZF_ButtonState initial;
 		setCurButtonState(initial);
 		setAlpha(1.0);
 
@@ -37,20 +37,20 @@ class RadioButton : ButtonBase {
 		self.command = command;
 	}
 
-	static RadioButton create(
+	static ZF_RadioButton create(
 		Vector2 pos, Vector2 size,
-		RadioController variable, int value,
-		ButtonAnimator animator = NULL,
+		ZF_RadioController variable, int value,
+		ZF_ButtonAnimator animator = NULL,
 		string text = "", Font fnt = NULL, double textScale = 1, int textColor = Font.CR_WHITE,
-		AlignType alignment = AlignType_Center, Handler cmdHandler = NULL, string command = ""
+		ZF_AlignType alignment = ZF_AlignType_Center, ZF_Handler cmdHandler = NULL, string command = ""
 	) {
-		let ret = new('RadioButton');
+		let ret = new('ZF_RadioButton');
 
 		ret.config(variable, value, animator, text, fnt, textScale, textColor, alignment, cmdHandler, command);
 		ret.setBox(pos, size);
 		ret.doneInitialSetup = true;
 		if (ret.animator != NULL) {
-			let a = ButtonAnimator(ret.animator);
+			let a = ZF_ButtonAnimator(ret.animator);
 			a.initialSetupDone(
 				ret,
 				ret.box,
@@ -67,8 +67,8 @@ class RadioButton : ButtonBase {
 		return ret;
 	}
 
-	override bool onNavEvent(NavEventType type, bool fromController) {
-		if (isEnabled() && isFocused() && type == NavEventType_Confirm) {
+	override bool onNavEvent(ZF_NavEventType type, bool fromController) {
+		if (isEnabled() && isFocused() && type == ZF_NavEventType_Confirm) {
 			variable.curVal = value;
 			if (cmdHandler != NULL) {
 				cmdHandler.radioButtonChanged(self, command, variable);
@@ -87,7 +87,7 @@ class RadioButton : ButtonBase {
 
 	override bool handleMousePosition(bool mouseBlock, Vector2 mousePos) {
 		if (isEnabled()) {
-			AABB screenBox; boxToScreen(screenBox);
+			ZF_AABB screenBox; boxToScreen(screenBox);
 			if (!mouseBlock && screenBox.pointCollides(mousePos)) {
 				hover = true;
 			}
@@ -99,17 +99,17 @@ class RadioButton : ButtonBase {
 	}
 
 	override void drawer() {
-		ButtonState s;
+		ZF_ButtonState s;
 		makeButtonState(s, variable.curVal == value, !getHoverBlock() && hover, click, !isEnabled());
 		if (!self.curButtonState.eq(s)) { setCurButtonState(s); }
 		Super.drawer();
 	}
 
-	override bool onUIEvent(UiEvent ev) {
+	override bool onUIEvent(ZF_UiEvent ev) {
 		// if the player's clicked, and their mouse is in the right place, set the state accordingly
 		if (ev.type == UIEvent.Type_LButtonDown) {
 			let mousePos = getGlobalStore().mousePos;
-			AABB screenBox; boxToScreen(screenBox);
+			ZF_AABB screenBox; boxToScreen(screenBox);
 			if (!mouseBlock && isEnabled() && screenBox.pointCollides(mousePos)) {
 				click = true;
 				setHoverBlock(self);
@@ -119,7 +119,7 @@ class RadioButton : ButtonBase {
 		else if (ev.type == UIEvent.Type_LButtonUp) {
 			if (isEnabled()) {
 				let mousePos = getGlobalStore().mousePos;
-				AABB screenBox; boxToScreen(screenBox);
+				ZF_AABB screenBox; boxToScreen(screenBox);
 				if (screenBox.pointCollides(mousePos) && click) {
 					variable.curVal = value;
 					if (cmdHandler != NULL) {

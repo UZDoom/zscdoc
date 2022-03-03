@@ -1,17 +1,17 @@
-class AnimatorSetupResult {
+class ZF_AnimatorSetupResult {
 	Object localStorage;
-	Array<Element> elements;
+	Array<ZF_Element> elements;
 
-	static AnimatorSetupResult create(Object localStorage) {
-		let ret = new("AnimatorSetupResult");
+	static ZF_AnimatorSetupResult create(Object localStorage) {
+		let ret = new("ZF_AnimatorSetupResult");
 		ret.localStorage = localStorage;
 		return ret;
 	}
 }
 
-class Animator abstract ui {
-	abstract AnimatorSetupResult setupOnElement(ElementContainer elem);
+class ZF_Animator abstract ui {
+	abstract ZF_AnimatorSetupResult setupOnElement(ZF_ElementContainer elem);
 	virtual void tick() {}
 
-	abstract void boxChange(ElementContainer elem, AABB old, AABB new, Object storage);
+	abstract void boxChange(ZF_ElementContainer elem, ZF_AABB old, ZF_AABB new, Object storage);
 }

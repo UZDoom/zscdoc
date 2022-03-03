@@ -1,31 +1,31 @@
-class SliderAnimator : Animator abstract {
-	abstract void lowChange(Slider elem, double old, double new, Object storage);
-	abstract void highChange(Slider elem, double old, double new, Object storage);
-	abstract void stepChange(Slider elem, double old, double new, Object storage);
-	abstract void valueChange(Slider elem, double old, double new, Object storage);
-	abstract void handleSizeChange(Slider elem, double old, double new, Object storage);
+class ZF_SliderAnimator : ZF_Animator abstract {
+	abstract void lowChange(ZF_Slider elem, double old, double new, Object storage);
+	abstract void highChange(ZF_Slider elem, double old, double new, Object storage);
+	abstract void stepChange(ZF_Slider elem, double old, double new, Object storage);
+	abstract void valueChange(ZF_Slider elem, double old, double new, Object storage);
+	abstract void handleSizeChange(ZF_Slider elem, double old, double new, Object storage);
 	abstract void handleStateChange(
-		Slider elem, SliderHandleState old, SliderHandleState new, Object storage
+		ZF_Slider elem, ZF_SliderHandleState old, ZF_SliderHandleState new, Object storage
 	);
-	abstract void verticalChange(Slider elem, bool old, bool new, Object storage);
+	abstract void verticalChange(ZF_Slider elem, bool old, bool new, Object storage);
 
 	abstract void initialSetupDone(
-		Slider elem,
-		AABB box,
+		ZF_Slider elem,
+		ZF_AABB box,
 		double low,
 		double high,
 		double step,
 		double value,
 		double handleSize,
-		SliderHandleState handleState,
+		ZF_SliderHandleState handleState,
 		bool vertical,
 		Object storage
 	);
 }
 
-class BasicSliderAnimatorStorage {
-	BoxImage background;
-	BoxImage handles[3];
+class ZF_BasicSliderAnimatorStorage {
+	ZF_BoxImage background;
+	ZF_BoxImage handles[3];
 
 	double scale;
 	double bias;
@@ -33,17 +33,17 @@ class BasicSliderAnimatorStorage {
 	double drawHandleSize;
 }
 
-class BasicSliderAnimator : SliderAnimator {
-	private BoxTextures backgroundTexture;
-	private BoxTextures handleTextures[3];
+class ZF_BasicSliderAnimator : ZF_SliderAnimator {
+	private ZF_BoxTextures backgroundTexture;
+	private ZF_BoxTextures handleTextures[3];
 
-	static BasicSliderAnimator create(
-		BoxTextures backgroundTexture,
-		BoxTextures handleInactive,
-		BoxTextures handleHover,
-		BoxTextures handleClick
+	static ZF_BasicSliderAnimator create(
+		ZF_BoxTextures backgroundTexture,
+		ZF_BoxTextures handleInactive,
+		ZF_BoxTextures handleHover,
+		ZF_BoxTextures handleClick
 	) {
-		let ret = new("BasicSliderAnimator");
+		let ret = new("ZF_BasicSliderAnimator");
 		ret.backgroundTexture = backgroundTexture;
 		ret.handleTextures[0] = handleInactive;
 		ret.handleTextures[1] = handleHover;
@@ -51,19 +51,19 @@ class BasicSliderAnimator : SliderAnimator {
 		return ret;
 	}
 
-	override AnimatorSetupResult setupOnElement(ElementContainer elem) {
-		let button = ButtonBase(elem);
-		let storage = new("BasicSliderAnimatorStorage");
-		let result = AnimatorSetupResult.Create(storage);
+	override ZF_AnimatorSetupResult setupOnElement(ZF_ElementContainer elem) {
+		let button = ZF_ButtonBase(elem);
+		let storage = new("ZF_BasicSliderAnimatorStorage");
+		let result = ZF_AnimatorSetupResult.Create(storage);
 		let pos = elem.getPos();
 		let size = elem.getSize();
-		let img = backgroundTexture != NULL ? BoxImage.create((0, 0), size, backgroundTexture) : NULL;
+		let img = backgroundTexture != NULL ? ZF_BoxImage.create((0, 0), size, backgroundTexture) : NULL;
 		if (img != NULL) {
 			result.elements.push(img);
 		}
 		storage.background = img;
 		for (int i = 0; i < 3; i++) {
-			let img = handleTextures[i] != NULL ? BoxImage.create((0, 0), size, handleTextures[i]) : NULL;
+			let img = handleTextures[i] != NULL ? ZF_BoxImage.create((0, 0), size, handleTextures[i]) : NULL;
 			if (img != NULL) {
 				img.hide();
 				result.elements.push(img);
@@ -73,7 +73,7 @@ class BasicSliderAnimator : SliderAnimator {
 		return result;
 	}
 
-	void recalculateScaleBias(BasicSliderAnimatorStorage storage, double low, double high) {
+	void recalculateScaleBias(ZF_BasicSliderAnimatorStorage storage, double low, double high) {
 		if (low == high) {
 			storage.scale = 0.0;
 			storage.bias = 0.0;
@@ -84,8 +84,8 @@ class BasicSliderAnimator : SliderAnimator {
 	}
 
 	void recalculateDrawHandleSize(
-		BasicSliderAnimatorStorage storage,
-		AABB box,
+		ZF_BasicSliderAnimatorStorage storage,
+		ZF_AABB box,
 		double low,
 		double high,
 		double step,
@@ -109,7 +109,7 @@ class BasicSliderAnimator : SliderAnimator {
 	}
 
 	void recalculateHandlePosition(
-		BasicSliderAnimatorStorage storage, AABB box, double value, bool vertical
+		ZF_BasicSliderAnimatorStorage storage, ZF_AABB box, double value, bool vertical
 	) {
 		let t = storage.scale * value + storage.bias;
 		Vector2 newPos; Vector2 newSize;
@@ -125,9 +125,9 @@ class BasicSliderAnimator : SliderAnimator {
 		}
 	}
 
-	override void boxChange(ElementContainer elem, AABB old, AABB new, Object storage) {
-		let elem = Slider(elem);
-		let storage = BasicSliderAnimatorStorage(storage);
+	override void boxChange(ZF_ElementContainer elem, ZF_AABB old, ZF_AABB new, Object storage) {
+		let elem = ZF_Slider(elem);
+		let storage = ZF_BasicSliderAnimatorStorage(storage);
 		let vertical = elem.getVertical();
 
 		storage.background.setBox((0, 0), new.size);
@@ -137,10 +137,10 @@ class BasicSliderAnimator : SliderAnimator {
 		recalculateHandlePosition(storage, new, elem.getValue(), vertical);
 	}
 
-	override void lowChange(Slider elem, double old, double new, Object storage) {
-		let storage = BasicSliderAnimatorStorage(storage);
+	override void lowChange(ZF_Slider elem, double old, double new, Object storage) {
+		let storage = ZF_BasicSliderAnimatorStorage(storage);
 
-		AABB box; elem.getBox(box);
+		ZF_AABB box; elem.getBox(box);
 		let low = new;
 		let high = elem.getHigh();
 		let vertical = elem.getVertical();
@@ -150,10 +150,10 @@ class BasicSliderAnimator : SliderAnimator {
 		recalculateHandlePosition(storage, box, elem.getValue(), vertical);
 	}
 
-	override void highChange(Slider elem, double old, double new, Object storage) {
-		let storage = BasicSliderAnimatorStorage(storage);
+	override void highChange(ZF_Slider elem, double old, double new, Object storage) {
+		let storage = ZF_BasicSliderAnimatorStorage(storage);
 
-		AABB box; elem.getBox(box);
+		ZF_AABB box; elem.getBox(box);
 		let low = elem.getLow();
 		let high = new;
 		let vertical = elem.getVertical();
@@ -163,44 +163,44 @@ class BasicSliderAnimator : SliderAnimator {
 		recalculateHandlePosition(storage, box, elem.getValue(), elem);
 	}
 
-	override void stepChange(Slider elem, double old, double new, Object storage) {
-		let storage = BasicSliderAnimatorStorage(storage);
+	override void stepChange(ZF_Slider elem, double old, double new, Object storage) {
+		let storage = ZF_BasicSliderAnimatorStorage(storage);
 
-		AABB box; elem.getBox(box);
+		ZF_AABB box; elem.getBox(box);
 		recalculateDrawHandleSize(
 			storage, box, elem.getLow(), elem.getHigh(), new, elem.getHandleSize(), elem.getVertical()
 		);
 	}
 
-	override void valueChange(Slider elem, double old, double new, Object storage) {
-		let storage = BasicSliderAnimatorStorage(storage);
+	override void valueChange(ZF_Slider elem, double old, double new, Object storage) {
+		let storage = ZF_BasicSliderAnimatorStorage(storage);
 
-		AABB box; elem.getBox(box);
+		ZF_AABB box; elem.getBox(box);
 		recalculateHandlePosition(storage, box, new, elem.getVertical());
 	}
 
-	override void handleSizeChange(Slider elem, double old, double new, Object storage) {
-		let storage = BasicSliderAnimatorStorage(storage);
+	override void handleSizeChange(ZF_Slider elem, double old, double new, Object storage) {
+		let storage = ZF_BasicSliderAnimatorStorage(storage);
 
-		AABB box; elem.getBox(box);
+		ZF_AABB box; elem.getBox(box);
 		let vertical = elem.getVertical();
 		recalculateDrawHandleSize(storage, box, elem.getLow(), elem.getHigh(), elem.getStep(), new, vertical);
 		recalculateHandlePosition(storage, box, elem.getValue(), vertical);
 	}
 
 	override void handleStateChange(
-		Slider elem, SliderHandleState old, SliderHandleState new, Object storage
+		ZF_Slider elem, ZF_SliderHandleState old, ZF_SliderHandleState new, Object storage
 	) {
-		let storage = BasicSliderAnimatorStorage(storage);
+		let storage = ZF_BasicSliderAnimatorStorage(storage);
 		
 		storage.handles[old].hide();
 		storage.handles[new].show();
 	}
 
-	override void verticalChange(Slider elem, bool old, bool new, Object storage) {
-		let storage = BasicSliderAnimatorStorage(storage);
+	override void verticalChange(ZF_Slider elem, bool old, bool new, Object storage) {
+		let storage = ZF_BasicSliderAnimatorStorage(storage);
 		
-		AABB box; elem.getBox(box);
+		ZF_AABB box; elem.getBox(box);
 		recalculateDrawHandleSize(
 			storage, box, elem.getLow(), elem.getHigh(), elem.getStep(), elem.getHandleSize(), new
 		);
@@ -208,18 +208,18 @@ class BasicSliderAnimator : SliderAnimator {
 	}
 
 	override void initialSetupDone(
-		Slider elem,
-		AABB box,
+		ZF_Slider elem,
+		ZF_AABB box,
 		double low,
 		double high,
 		double step,
 		double value,
 		double handleSize,
-		SliderHandleState handleState,
+		ZF_SliderHandleState handleState,
 		bool vertical,
 		Object storage
 	) {
-		let storage = BasicSliderAnimatorStorage(storage);
+		let storage = ZF_BasicSliderAnimatorStorage(storage);
 		
 		recalculateScaleBias(storage, low, high);
 		recalculateDrawHandleSize(storage, box, low, high, step, handleSize, vertical);
@@ -229,20 +229,20 @@ class BasicSliderAnimator : SliderAnimator {
 	}
 }
 
-enum SliderHandleState {
-	SliderHandleState_Normal,
-	SliderHandleState_Hover,
-	SliderHandleState_Click
+enum ZF_SliderHandleState {
+	ZF_SliderHandleState_Normal,
+	ZF_SliderHandleState_Hover,
+	ZF_SliderHandleState_Click
 }
 
-class Slider : ElementContainer {
+class ZF_Slider : ZF_ElementContainer {
 	protected double low, high, step;
 	double getLow() { return self.low; }
 	void setLow(double low) {
 		let old = self.low;
 		self.low = low;
 		swapIfNecessary();
-		let animator = SliderAnimator(animator);
+		let animator = ZF_SliderAnimator(animator);
 		if (shouldUpdateAnimator()) { animator.lowChange(self, old, self.low, animStorage); }
 		finalizeValue(value);
 	}
@@ -251,7 +251,7 @@ class Slider : ElementContainer {
 		let old = self.high;
 		self.high = high;
 		swapIfNecessary();
-		let animator = SliderAnimator(animator);
+		let animator = ZF_SliderAnimator(animator);
 		if (shouldUpdateAnimator()) { animator.highChange(self, old, self.high, animStorage); }
 		finalizeValue(value);
 	}
@@ -259,16 +259,16 @@ class Slider : ElementContainer {
 	void setStep(double step) {
 		let old = self.step;
 		self.step = max(step, 0.0);
-		let animator = SliderAnimator(animator);
+		let animator = ZF_SliderAnimator(animator);
 		if (shouldUpdateAnimator()) { animator.stepChange(self, old, self.step, animStorage); }
 	}
 
-	protected SliderHandleState handleState;
-	SliderHandleState getHandleState() { return self.handleState; }
-	protected void setHandleState(SliderHandleState handleState) {
+	protected ZF_SliderHandleState handleState;
+	ZF_SliderHandleState getHandleState() { return self.handleState; }
+	protected void setHandleState(ZF_SliderHandleState handleState) {
 		let old = self.handleState;
 		self.handleState = handleState;
-		let animator = SliderAnimator(animator);
+		let animator = ZF_SliderAnimator(animator);
 		if (shouldUpdateAnimator()) { animator.handleStateChange(self, old, self.handleState, animStorage); }
 	}
 
@@ -277,7 +277,7 @@ class Slider : ElementContainer {
 		if (cmdHandler != NULL && old != value) {
 			cmdHandler.sliderChanged(self, command);
 		}
-		let animator = SliderAnimator(animator);
+		let animator = ZF_SliderAnimator(animator);
 		if (shouldUpdateAnimator()) { animator.valueChange(self, old, self.value, animStorage); }
 	}
 
@@ -302,7 +302,7 @@ class Slider : ElementContainer {
 	void setHandleSize(double handleSize) {
 		let old = self.handleSize;
 		self.handleSize = handleSize;
-		let animator = SliderAnimator(animator);
+		let animator = ZF_SliderAnimator(animator);
 		if (shouldUpdateAnimator()) { animator.handleSizeChange(self, old, self.handleSize, animStorage); }
 	}
 
@@ -311,7 +311,7 @@ class Slider : ElementContainer {
 	void setVertical(bool vertical) {
 		let old = self.vertical;
 		self.vertical = vertical;
-		let animator = SliderAnimator(animator);
+		let animator = ZF_SliderAnimator(animator);
 		if (shouldUpdateAnimator()) { animator.verticalChange(self, old, self.vertical, animStorage); }
 	}
 
@@ -344,8 +344,8 @@ class Slider : ElementContainer {
 
 	void config(
 		double low, double high, double value, double step, double handleSize,
-		SliderAnimator animator, bool vertical = false, bool dragHandle = false,
-		Handler cmdHandler = NULL, string command = ""
+		ZF_SliderAnimator animator, bool vertical = false, bool dragHandle = false,
+		ZF_Handler cmdHandler = NULL, string command = ""
 	) {
 		setAnimator(animator);
 		setLow(low);
@@ -353,7 +353,7 @@ class Slider : ElementContainer {
 		setStep(step);
 		setValue(value);
 		setHandleSize(handleSize);
-		setHandleState(SliderHandleState_Normal);
+		setHandleState(ZF_SliderHandleState_Normal);
 		setVertical(vertical);
 		setDragHandle(dragHandle);
 		setAlpha(1.0);
@@ -362,7 +362,7 @@ class Slider : ElementContainer {
 
 		self.doneInitialSetup = true;
 		if (self.animator != NULL) {
-			let a = SliderAnimator(self.animator);
+			let a = ZF_SliderAnimator(self.animator);
 			a.initialSetupDone(
 				self,
 				self.box,
@@ -378,13 +378,13 @@ class Slider : ElementContainer {
 		}
 	}
 
-	static Slider create(
+	static ZF_Slider create(
 		Vector2 pos, Vector2 size,
 		double low, double high, double value, double step, double handleSize,
-		SliderAnimator animator, bool vertical = false, bool dragHandle = false,
-		Handler cmdHandler = NULL, string command = ""
+		ZF_SliderAnimator animator, bool vertical = false, bool dragHandle = false,
+		ZF_Handler cmdHandler = NULL, string command = ""
 	) {
-		let ret = new("Slider");
+		let ret = new("ZF_Slider");
 
 		ret.setBox(pos, size);
 		ret.config(low, high, value, step, handleSize, animator, vertical, dragHandle, cmdHandler, command);
@@ -392,12 +392,12 @@ class Slider : ElementContainer {
 		return ret;
 	}
 
-	void getCollisionBox(AABB collisionBox) {
+	void getCollisionBox(ZF_AABB collisionBox) {
 		if (dragHandle) {
 			let t = (high == low) ? 0.0 : ((value - low) / (high - low));
 			Vector2 newPos; Vector2 newSize;
 			let drawHandleSize = getDrawHandleSize();
-			AABB tmp;
+			ZF_AABB tmp;
 			if (vertical) {
 				tmp.pos = (0.0, t * (box.size.y - drawHandleSize));
 				tmp.size = (box.size.x, drawHandleSize);
@@ -412,7 +412,7 @@ class Slider : ElementContainer {
 	}
 
 	override void drawer() {
-		AABB collisionBox; getCollisionBox(collisionBox);
+		ZF_AABB collisionBox; getCollisionBox(collisionBox);
 		let mousePos = getGlobalStore().mousePos;
 		let needsToCheck = !mouseBlock && !getHoverBlock() && isEnabled();
 		hover =
@@ -421,7 +421,7 @@ class Slider : ElementContainer {
 				: !mouseBlock && !getHoverBlock() && isEnabled() && collisionBox.pointCollides(mousePos);
 
 		if (clicking) {
-			AABB screenBox; boxToScreen(screenBox);
+			ZF_AABB screenBox; boxToScreen(screenBox);
 			let diff = mousePos - screenBox.pos;
 			diff /= getScale();
 			if (vertical) {
@@ -448,10 +448,10 @@ class Slider : ElementContainer {
 		let t = (high == low) ? 0.0 : ((value - low) / (high - low));
 		let s =
 			clicking
-				? SliderHandleState_Click
+				? ZF_SliderHandleState_Click
 				: hover
-					? SliderHandleState_Hover
-					: SliderHandleState_Normal;
+					? ZF_SliderHandleState_Hover
+					: ZF_SliderHandleState_Normal;
 
 		if (handleState != s) {
 			setHandleState(s);
@@ -460,7 +460,7 @@ class Slider : ElementContainer {
 		Super.drawer();
 	}
 
-	override bool onNavEvent(NavEventType type, bool fromController) {
+	override bool onNavEvent(ZF_NavEventType type, bool fromController) {
 		if (isEnabled() && isFocused()) {
 			let newStep = step;
 			if (step == 0.0) {
@@ -468,11 +468,11 @@ class Slider : ElementContainer {
 			}
 			let oldVal = value;
 			switch (type) {
-			case NavEventType_Left: {
+			case ZF_NavEventType_Left: {
 				setValue(value - newStep);
 				return true;
 			}
-			case NavEventType_Right: {
+			case ZF_NavEventType_Right: {
 				setValue(value + newStep);
 				return true;
 			}
@@ -481,12 +481,12 @@ class Slider : ElementContainer {
 		return false;
 	}
 
-	override bool onUIEvent(UiEvent ev) {
+	override bool onUIEvent(ZF_UiEvent ev) {
 		if (ev.type == UIEvent.Type_LButtonDown) {
 			if (hover) {
 				clicking = true;
 				if (dragHandle && step == 0.0) {
-					AABB collisionBox; getCollisionBox(collisionBox);
+					ZF_AABB collisionBox; getCollisionBox(collisionBox);
 					let mousePos = getGlobalStore().mousePos;
 					let diff = mousePos - collisionBox.pos;
 					if (vertical) {

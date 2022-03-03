@@ -55,7 +55,7 @@ fn render_html_boilerplate(
             </head>
             <body>
                 <div id="header">
-                    <button id="header_button" onclick="window.toggle_sidebar()">"☰"</button>
+                    <button id="header_button">"☰"</button>
                     <h1 id="header_main_link"><a href="index.html">
                         { text!(&sidebar_data.docs_name) } " Documentation"
                     </a></h1>
@@ -84,7 +84,6 @@ fn render_doc_vis_toggle_button(
     Some(html!(
         <div class=["vis_toggle_wrapper", "end_justify"]>
             <button
-                onclick={ format!(r#"window.toggle_vis("{id}")"#) }
                 id={ &*format!("{id}.vis_button") }
                 class="vis_toggle"
             >"-"</button>
@@ -473,6 +472,22 @@ impl MemberVariable {
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
+                {
+                    self.deprecated.as_ref().map(|d| html!(
+                        <div class="info deprecated">
+                            <span class="info_icon">"🛇"</span>
+                            "deprecated since "
+                            { text!(&d.version) }
+                            {
+                                if !d.reason.is_empty() {
+                                    Some(text!(format!(": {}", &d.reason)))
+                                } else {
+                                    None
+                                }
+                            }
+                        </div>
+                    ))
+                }
                 { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
                 <hr/>
             </div>
@@ -491,6 +506,33 @@ impl Function {
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
+                {
+                    self.deprecated.as_ref().map(|d| html!(
+                        <div class="info deprecated">
+                            <span class="info_icon">"🛇"</span>
+                            "deprecated since "
+                            { text!(&d.version) }
+                            {
+                                if !d.reason.is_empty() {
+                                    Some(text!(format!(": {}", &d.reason)))
+                                } else {
+                                    None
+                                }
+                            }
+                        </div>
+                    ))
+                }
+                {
+                    self.overrides.as_ref().map(|o| html!(
+                        <div class="info">
+                            <span class="info_icon">"ⓘ"</span>
+                            "overrides "
+                            <code><a href=o.get_href() class=o.get_style()>
+                                { text!(&o.text) }
+                            </a></code>
+                        </div>
+                    ))
+                }
                 { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
                 <hr/>
             </div>

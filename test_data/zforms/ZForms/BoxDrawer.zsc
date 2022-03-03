@@ -1,15 +1,15 @@
-struct BoxDrawer ui {
+struct ZF_BoxDrawer ui {
 	private Shape2D shape;
 	private Shape2DTransform transform;
 
 	private bool initialised;
 	private Vector2 lastPos;
 	private Vector2 lastSize;
-	private BoxTextures lastTextures;
+	private ZF_BoxTextures lastTextures;
 	private Vector2 lastScale;
 
 	void draw(
-		Element master, Vector2 pos, Vector2 size, BoxTextures textures,
+		ZF_Element master, Vector2 pos, Vector2 size, ZF_BoxTextures textures,
 		bool animate, Vector2 scale = (1, 1)
 	) {
 		let absPos = master.relToScreen(pos) * master.getScale();
@@ -33,7 +33,7 @@ struct BoxDrawer ui {
 		}
 		shape.setTransform(transform);
 		let texID = TexMan.checkForTexture(textures.getBoxTexture(), TexMan.Type_Any);
-		AABB clipRect; master.getClipAABB(clipRect);
+		ZF_AABB clipRect; master.getClipAABB(clipRect);
 		Screen.drawShape(
 			texID, animate, shape, DTA_Alpha, master.getDrawAlpha(),
 			DTA_ClipLeft, int(floor(clipRect.pos.x)),
@@ -106,7 +106,7 @@ struct BoxDrawer ui {
 	}
 
 	Shape2D calc(
-		Element master, Vector2 size, BoxTextures textures, Vector2 scale = (1, 1)
+		ZF_Element master, Vector2 size, ZF_BoxTextures textures, Vector2 scale = (1, 1)
 	) {
 		double screenScale = master.getScale();
 

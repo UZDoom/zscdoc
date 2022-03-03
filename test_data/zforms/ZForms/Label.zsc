@@ -1,4 +1,4 @@
-class Label : Element {
+class ZF_Label : ZF_Element {
 	protected Font fnt;
 	Font getFont() { return fnt; }
 	void setFont(Font fnt) {
@@ -19,9 +19,9 @@ class Label : Element {
 	double getTextScale() { return self.textScale; }
 	void setTextScale(double textScale) { self.textScale = textScale; recalculateLines(); }
 
-	protected AlignType alignment;
-	AlignType getAlignment() { return self.alignment; }
-	void setAlignment(AlignType alignment) { self.alignment = alignment; }
+	protected ZF_AlignType alignment;
+	ZF_AlignType getAlignment() { return self.alignment; }
+	void setAlignment(ZF_AlignType alignment) { self.alignment = alignment; }
 
 	protected int textColor;
 	int getTextColor() { return self.textColor; }
@@ -39,9 +39,9 @@ class Label : Element {
 	double getLineSpacing() { return self.lineSpacing; }
 	void setLineSpacing(double lineSpacing) { self.lineSpacing = lineSpacing; }
 
-	protected Element forElement;
-	Element getForElement() { return self.forElement; }
-	void setForElement(Element forElement) { self.forElement = forElement; }
+	protected ZF_Element forElement;
+	ZF_Element getForElement() { return self.forElement; }
+	void setForElement(ZF_Element forElement) { self.forElement = forElement; }
 
 	protected bool clicking;
 
@@ -53,14 +53,14 @@ class Label : Element {
 		}
 	}
 
-	override void onBoxChanged(AABB old) {
+	override void onBoxChanged(ZF_AABB old) {
 		recalculateLines();
 	}
 
 	void config(
-		string text = "", Font fnt = NULL, AlignType alignment = AlignType_TopLeft, bool wrap = true,
+		string text = "", Font fnt = NULL, ZF_AlignType alignment = ZF_AlignType_TopLeft, bool wrap = true,
 		bool autoSize = false, double textScale = 1, int textColor = Font.CR_WHITE, double lineSpacing = 0,
-		Element forElement = NULL
+		ZF_Element forElement = NULL
 	) {
 		calculate = false;
 		setFont(fnt);
@@ -78,12 +78,12 @@ class Label : Element {
 		recalculateLines();
 	}
 
-	static Label create(
-		Vector2 pos, Vector2 size, string text = "", Font fnt = NULL, AlignType alignment = AlignType_TopLeft,
+	static ZF_Label create(
+		Vector2 pos, Vector2 size, string text = "", Font fnt = NULL, ZF_AlignType alignment = ZF_AlignType_TopLeft,
 		bool wrap = true, bool autoSize = false, double textScale = 1, int textColor = Font.CR_WHITE,
-		double lineSpacing = 0, Element forElement = NULL
+		double lineSpacing = 0, ZF_Element forElement = NULL
 	) {
-		let ret = new('Label');
+		let ret = new('ZF_Label');
 
 		ret.setBox(pos, size);
 		ret.config(text, fnt, alignment, wrap, autoSize, textScale, textColor, lineSpacing, forElement);
@@ -108,7 +108,7 @@ class Label : Element {
 	}
 
 	override void drawer() {
-		AABB beforeClip, clipRect;
+		ZF_AABB beforeClip, clipRect;
 		screenClip(beforeClip, clipRect);
 		Screen.setClipRect(int(clipRect.pos.x), int(clipRect.pos.y), int(clipRect.size.x), int(clipRect.size.y));
 
@@ -138,10 +138,10 @@ class Label : Element {
 		Screen.setClipRect(int(beforeClip.pos.x), int(beforeClip.pos.y), int(beforeClip.size.x), int(beforeClip.size.y));
 	}
 
-	override bool onNavEvent(NavEventType type, bool fromController) {
+	override bool onNavEvent(ZF_NavEventType type, bool fromController) {
 		if (forElement == NULL) return false;
 
-		if (isFocused() && type == NavEventType_Confirm) {
+		if (isFocused() && type == ZF_NavEventType_Confirm) {
 			if (forElement.isEnabled()) {
 				forElement.activate();
 				return true;
@@ -150,10 +150,10 @@ class Label : Element {
 		return false;
 	}
 
-	override bool onUIEvent(UiEvent ev) {
+	override bool onUIEvent(ZF_UiEvent ev) {
 		if (forElement == NULL) return false;
 		if (ev.type == UIEvent.Type_LButtonDown) {
-			AABB screenBox; boxToScreen(screenBox);
+			ZF_AABB screenBox; boxToScreen(screenBox);
 			let mousePos = getGlobalStore().mousePos;
 			if (!mouseBlock && isEnabled() && screenBox.pointCollides(mousePos)) {
 				clicking = true;
@@ -161,7 +161,7 @@ class Label : Element {
 			}
 		}
 		else if (ev.type == UIEvent.Type_LButtonUp) {
-			AABB screenBox; boxToScreen(screenBox);
+			ZF_AABB screenBox; boxToScreen(screenBox);
 			let mousePos = getGlobalStore().mousePos;
 			if (isEnabled() && screenBox.pointCollides(mousePos) && clicking) {
 				if (forElement.isEnabled()) forElement.activate();

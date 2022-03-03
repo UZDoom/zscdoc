@@ -24,6 +24,8 @@ $function_fg: #9a6e31;
 $member_fg: #9c38ff;
 $constant_fg: #0e4a94;
 
+$deprecated_fg: #a90003;
+
 $scrollbar_fg: #726f75;
 $scrollbar_hover_fg: #8d8a91;
 $scrollbar_active_fg: #f0ebf5;
@@ -108,6 +110,21 @@ h4,
 h5,
 h6 {
   font-family: "Roboto", sans-serif;
+}
+
+.deprecated {
+  color: $deprecated_fg;
+}
+
+.info {
+  font-family: "Roboto", sans-serif;
+  margin-left: 20px;
+}
+
+.info_icon {
+  font-weight: bold;
+  padding-right: 0.25em;
+  user-select: none;
 }
 
 .main_heading {
@@ -258,17 +275,17 @@ a.sidebar_header:hover {
   word-wrap: normal;
   overflow-x: hidden;
   text-overflow: ellipsis;
-
-  &:hover {
-    background-color: $sidebar_hover_bg;
-    text-decoration: none;
-  }
 }
 
 .sidebar_text {
   padding-left: 10px;
   padding-right: 10px;
   font-family: "Roboto", sans-serif;
+}
+
+.sidebar_clickable:hover {
+  background-color: $sidebar_hover_bg;
+  text-decoration: none;
 }
 
 #inner {

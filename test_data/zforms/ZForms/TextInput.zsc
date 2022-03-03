@@ -1,4 +1,4 @@
-class TextInput : Element {
+class ZF_TextInput : ZF_Element {
 	protected Font fnt;
 	Font getFont() { return self.fnt; }
 	void setFont(Font fnt) {
@@ -18,10 +18,10 @@ class TextInput : Element {
 	int getTextColor() { return self.textColor; }
 	void setTextColor(int textColor) { self.textColor = textColor; }
 
-	protected BoxTextures background;
-	BoxTextures getBackgroundTexture() { return self.background; }
-	void setBackgroundTexture(BoxTextures background) { self.background = background; }
-	protected BoxDrawer bgDrawer;
+	protected ZF_BoxTextures background;
+	ZF_BoxTextures getBackgroundTexture() { return self.background; }
+	void setBackgroundTexture(ZF_BoxTextures background) { self.background = background; }
+	protected ZF_BoxDrawer bgDrawer;
 
 	protected string text;
 
@@ -49,16 +49,16 @@ class TextInput : Element {
 	protected double upDownX;
 
 	protected bool multiline;
-	protected OldScrollbar bar;
+	protected ZF_OldScrollbar bar;
 	protected double scrollbarWidth;
 
 	void config(
 		Font fnt = NULL, double textScale = 1, int textColor = Font.CR_WHITE,
-		BoxTextures background = NULL, bool multiline = false,
-		Handler cmdHandler = NULL, string command = "",
+		ZF_BoxTextures background = NULL, bool multiline = false,
+		ZF_Handler cmdHandler = NULL, string command = "",
 		double scrollbarWidth = 0.0,
-		BoxTextures scrollBarNormal = NULL, BoxTextures scrollBarHover = NULL,
-		BoxTextures scrollBarClick = NULL, BoxTextures scrollBg = NULL
+		ZF_BoxTextures scrollBarNormal = NULL, ZF_BoxTextures scrollBarHover = NULL,
+		ZF_BoxTextures scrollBarClick = NULL, ZF_BoxTextures scrollBg = NULL
 	) {
 
 		setFont(fnt);
@@ -82,19 +82,19 @@ class TextInput : Element {
 		updateLines();
 	}
 
-	static TextInput create(
+	static ZF_TextInput create(
 		Vector2 pos, Vector2 size, Font fnt = NULL, double textScale = 1,
-		int textColor = Font.CR_WHITE, BoxTextures background = NULL,
-		bool multiline = false, Handler cmdHandler = NULL, string command = "",
+		int textColor = Font.CR_WHITE, ZF_BoxTextures background = NULL,
+		bool multiline = false, ZF_Handler cmdHandler = NULL, string command = "",
 		double scrollbarWidth = 0.0,
-		BoxTextures scrollBarNormal = NULL, BoxTextures scrollBarHover = NULL,
-		BoxTextures scrollBarClick = NULL, BoxTextures scrollBg = NULL
+		ZF_BoxTextures scrollBarNormal = NULL, ZF_BoxTextures scrollBarHover = NULL,
+		ZF_BoxTextures scrollBarClick = NULL, ZF_BoxTextures scrollBg = NULL
 	) {
 
-		let ret = new('TextInput');
+		let ret = new('ZF_TextInput');
 
 		ret.setBox(pos, size);
-		ret.bar = OldScrollbar.create((0, 0), (0, 0), NULL, NULL);
+		ret.bar = ZF_OldScrollbar.create((0, 0), (0, 0), NULL, NULL);
 		ret.bar.master = ret;
 		ret.config(fnt, textScale, textColor, background, multiline, cmdHandler, command, scrollbarWidth, scrollBarNormal, scrollBarHover, scrollBarClick, scrollBg);
 
@@ -325,8 +325,8 @@ class TextInput : Element {
 			if (scrollbarWidth > 0.0) bar.drawer();
 		}
 
-		AABB beforeClip, clipRect;
-		AABB aabb;
+		ZF_AABB beforeClip, clipRect;
+		ZF_AABB aabb;
 		aabb.size = (getXSize(), box.size.y);
 		screenClip(beforeClip, clipRect, aabb);
 		Screen.setClipRect(int(clipRect.pos.x), int(clipRect.pos.y), int(clipRect.size.x), int(clipRect.size.y));
@@ -338,7 +338,7 @@ class TextInput : Element {
 		if (multiline) {
 			let pos = getAlignedDrawPos(
 				(getXSize(), box.size.y), 
-				(fnt.stringWidth(text), fnt.getHeight()) * textScale, AlignType_TopLeft
+				(fnt.stringWidth(text), fnt.getHeight()) * textScale, ZF_AlignType_TopLeft
 			) + (4.0, 4.0) * textScale;
 
 			if (selCursor != -1) {
@@ -401,7 +401,7 @@ class TextInput : Element {
 			}
 		}
 		else {
-			let pos = getAlignedDrawPos(box.size, (fnt.stringWidth(text), fnt.getHeight()) * textScale, AlignType_CenterLeft);
+			let pos = getAlignedDrawPos(box.size, (fnt.stringWidth(text), fnt.getHeight()) * textScale, ZF_AlignType_CenterLeft);
 
 			if (selCursor != -1) {
 				let cursor0 = min(cursor, selCursor);
@@ -423,7 +423,7 @@ class TextInput : Element {
 	}
 
 	double, int, bool getCursorPositionFromMouse() {
-		AABB screenBox; boxToScreen(screenBox);
+		ZF_AABB screenBox; boxToScreen(screenBox);
 		let mousePos = getGlobalStore().mousePos;
 		let diff = mousePos - screenBox.pos;
 		diff /= getScale();
@@ -581,8 +581,8 @@ class TextInput : Element {
 		else upDownX = fnt.stringWidth(lines[selCursorLine].left(selCursorRelative)) * textScale;
 	}
 
-	override bool onNavEvent(NavEventType type, bool fromController) {
-		if (isEnabled() && isFocused() && type == NavEventType_Confirm) {
+	override bool onNavEvent(ZF_NavEventType type, bool fromController) {
+		if (isEnabled() && isFocused() && type == ZF_NavEventType_Confirm) {
 			setHoverBlock(self);
 			getGlobalStore().blockMenuEvent = true;
 			typing = true;
@@ -600,14 +600,14 @@ class TextInput : Element {
 		return false;
 	}
 
-	override bool onUIEvent(UiEvent ev) {
+	override bool onUIEvent(ZF_UiEvent ev) {
 		if (bar != NULL) bar.onUIEvent(ev);
 		let mousePos = getGlobalStore().mousePos;
 		mouseBlock |= bar.blocksMouse(mousePos);
 
 		bool dontFixOffset = false;
 		
-		AABB screenBox; boxToScreen(screenBox);
+		ZF_AABB screenBox; boxToScreen(screenBox);
 
 		// if the player's clicked, and their mouse is in the right place, set the state accordingly
 		if (ev.type == UIEvent.Type_LButtonDown) {

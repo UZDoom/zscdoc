@@ -1,7 +1,7 @@
-class ScrollContainer : ElementContainer {
-	protected Element scrollArea;
-	Element getScrollArea() { return scrollArea; }
-	protected Scrollbar bar;
+class ZF_ScrollContainer : ZF_ElementContainer {
+	protected ZF_Element scrollArea;
+	ZF_Element getScrollArea() { return scrollArea; }
+	protected ZF_Scrollbar bar;
 
 	protected double scrollWidth;
 	protected double scrollAreaHeight;
@@ -22,23 +22,23 @@ class ScrollContainer : ElementContainer {
 		self.alpha = 1.0;
 	}
 
-	static ScrollContainer create(
+	static ZF_ScrollContainer create(
 		Vector2 pos, Vector2 size,
 		double scrollWidth, double scrollAreaHeight, double scrollNotchJump,
-		SliderAnimator scrollbarAnimator,
-		Element scrollArea = NULL, double contentBarGap = 0.0
+		ZF_SliderAnimator scrollbarAnimator,
+		ZF_Element scrollArea = NULL, double contentBarGap = 0.0
 	) {
-		let ret = new('ScrollContainer');
+		let ret = new('ZF_ScrollContainer');
 
 		ret.setBox(pos, size);
 
 		if (scrollArea == NULL) {
-			ret.scrollArea = Frame.create((0, 0), (0, 0));
+			ret.scrollArea = ZF_Frame.create((0, 0), (0, 0));
 		}
 		else {
 			ret.scrollArea = scrollArea;
 		}
-		ret.bar = Scrollbar.create((0, 0), (0, 0), scrollbarAnimator, true);
+		ret.bar = ZF_Scrollbar.create((0, 0), (0, 0), scrollbarAnimator, true);
 
 		ret.config(scrollWidth, scrollAreaHeight, scrollNotchJump, contentBarGap);
 		ret.elements.push(ret.bar);
@@ -52,17 +52,17 @@ class ScrollContainer : ElementContainer {
 		return ret;
 	}
 
-	override bool onNavEvent(NavEventType type, bool fromController) {
+	override bool onNavEvent(ZF_NavEventType type, bool fromController) {
 		if (isFocused() && isEnabled()) {
 			switch (type) {
-			case NavEventType_Down: {
+			case ZF_NavEventType_Down: {
 				let oldPos = bar.getValue();
 				let newPos = oldPos;
 				newPos += scrollNotchJump;
 				bar.setValue(newPos);
 				return bar.getValue() != oldPos;
 			}
-			case NavEventType_Up: {
+			case ZF_NavEventType_Up: {
 				let oldPos = bar.getValue();
 				let newPos = oldPos;
 				newPos -= scrollNotchJump;
@@ -74,11 +74,11 @@ class ScrollContainer : ElementContainer {
 		return Super.onNavEvent(type, fromController);
 	}
 
-	override bool onUIEvent(UiEvent ev) {
+	override bool onUIEvent(ZF_UiEvent ev) {
 		if (Super.onUIEvent(ev)) return true;
 		let mousePos = getGlobalStore().mousePos;
 		if (ev.type == UiEvent.Type_WheelDown || ev.type == UiEvent.Type_WheelUp) {
-			AABB screenBox; boxToScreen(screenBox);
+			ZF_AABB screenBox; boxToScreen(screenBox);
 			if (isEnabled() && screenBox.pointCollides(mousePos)) {
 				let dir = ev.type == UiEvent.Type_WheelDown ? 1.0 : -1.0;
 				let oldPos = bar.getValue();
@@ -95,7 +95,7 @@ class ScrollContainer : ElementContainer {
 		scrollArea.setBox((0, 0), (box.size.x - scrollWidth - contentBarGap, scrollAreaHeight));
 		bar.setBox((box.size.x - scrollWidth, 0.0), (scrollWidth, box.size.y));
 		bar.setContent(scrollAreaHeight, box.size.y);
-		AABB oldBox; scrollArea.getBox(oldBox);
+		ZF_AABB oldBox; scrollArea.getBox(oldBox);
 		oldBox.pos.y = -bar.getValue();
 		Console.printf("%f %f %f", bar.getLow(), bar.getHigh(), bar.getValue());
 		scrollArea.setBox(oldBox.pos, oldBox.size);

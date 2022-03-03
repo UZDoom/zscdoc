@@ -1,4 +1,4 @@
-struct UiEvent ui {
+struct ZF_UiEvent ui {
 	// 
 	int Type;
 	//
@@ -12,7 +12,7 @@ struct UiEvent ui {
 	bool IsCtrl;
 	bool IsAlt;
 
-	static void fromGZDUiEvent(UiEvent gzdEv, UiEvent ev) {
+	static void fromGZDUiEvent(UiEvent gzdEv, ZF_UiEvent ev) {
 		ev.Type = gzdEv.Type;
 		ev.KeyString = gzdEv.KeyString;
 		ev.KeyChar = gzdEv.KeyChar;
