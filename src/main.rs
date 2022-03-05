@@ -57,6 +57,7 @@ fn save_docs_to_folder(
     docs: &structures::Documentation,
     delete_without_confirm: bool,
     item_provider: &ItemProvider,
+    favicon: Option<&[u8]>,
 ) -> anyhow::Result<()> {
     use std::fs::*;
     use std::io::*;
@@ -145,6 +146,10 @@ fn save_docs_to_folder(
                 .as_bytes(),
         )?;
     }
+    if let Some(f) = favicon {
+        let mut file = File::create(path.join("favicon.png"))?;
+        file.write_all(f)?;
+    }
     Ok(())
 }
 
@@ -160,6 +165,9 @@ fn main() -> anyhow::Result<()> {
         .get_file("docs/summary.md")
         .map(|s| s.text().to_string())
         .unwrap_or_else(|| "".to_string());
+
+    let favicon = filesystem.get_file("docs/favicon.png");
+    let favicon = favicon.as_ref().map(|s| s.data());
 
     let mut files = Files::default();
     let mut errs = vec![];
@@ -181,6 +189,7 @@ fn main() -> anyhow::Result<()> {
         &docs,
         args.delete_without_confirm,
         &item_provider,
+        favicon,
     )
     .unwrap();
 

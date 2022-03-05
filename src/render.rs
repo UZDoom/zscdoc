@@ -10,7 +10,7 @@ use typed_html::{
     elements::{FlowContent, PhrasingContent},
     html, text,
     types::{Id, SpacedSet},
-    unsafe_text, OutputType,
+    unsafe_text,
 };
 use zscript_parser::interner::intern_name;
 
@@ -48,7 +48,8 @@ fn render_html_boilerplate(
         <html lang="en-US">
             <head>
                 <title> { text!(title) } </title>
-                <link rel="stylesheet" href="main.css"/>
+                <link rel="icon" type="image/x-icon" href="/favicon.png"/>
+                <link rel="stylesheet" href="/main.css"/>
                 <script src="main.js"></script>
                 <meta charset="UTF-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -56,7 +57,7 @@ fn render_html_boilerplate(
             <body>
                 <div id="header">
                     <button id="header_button">"☰"</button>
-                    <h1 id="header_main_link"><a href="index.html">
+                    <h1 id="header_main_link"><a href="/index.html">
                         { text!(&sidebar_data.docs_name) } " Documentation"
                     </a></h1>
                 </div>
@@ -71,7 +72,7 @@ fn render_html_boilerplate(
                 </div>
             </body>
         </html>
-    : String)
+    )
 }
 
 fn render_doc_vis_toggle_button(
@@ -88,7 +89,7 @@ fn render_doc_vis_toggle_button(
                 class="vis_toggle"
             >"-"</button>
         </div>
-    : String))
+    ))
 }
 
 fn md_event_map<'a>(
@@ -230,13 +231,13 @@ pub fn render_doc_summary(text: &str) -> Option<Box<dyn FlowContent<String>>> {
     ))
 }
 
-fn render_doc_comment<T: OutputType + 'static + Send>(
+fn render_doc_comment(
     text: &str,
     large: bool,
     id: &str,
     item_provider: &ItemProvider,
     context: &[zscript_parser::interner::NameSymbol],
-) -> Option<Box<dyn FlowContent<T>>> {
+) -> Option<Box<dyn FlowContent<String>>> {
     if text.trim().is_empty() {
         return None;
     }
@@ -325,7 +326,7 @@ impl LinkedSection {
     }
 }
 impl SourceCodeSection {
-    fn render<T: OutputType + 'static + Send>(&self) -> Box<dyn PhrasingContent<T>> {
+    fn render(&self) -> Box<dyn PhrasingContent<String>> {
         match self {
             SourceCodeSection::NoLink(s) => text!(add_zws(s)),
             SourceCodeSection::Linked(l) => html!(
@@ -351,7 +352,7 @@ impl SourceCodeWithLinks {
             .sum()
     }
 
-    fn render<T: OutputType + 'static + Send>(&self) -> Box<dyn FlowContent<T>> {
+    fn render(&self) -> Box<dyn FlowContent<String>> {
         enum MultilineSection<'a> {
             NonIndented(Vec<&'a SourceCodeSection>),
             Indented(Vec<&'a SourceCodeSection>),
@@ -406,10 +407,10 @@ impl SourceCodeWithLinks {
         let multiline = length > 40;
         if multiline {
             let multiline_sections = group_multiline_sections(&self.sections);
-            fn render_multiline_section<T: OutputType + 'static + Send>(
+            fn render_multiline_section(
                 indent: bool,
                 sections: &[&SourceCodeSection],
-            ) -> Box<dyn FlowContent<T>> {
+            ) -> Box<dyn FlowContent<String>> {
                 let classes: SpacedSet<typed_html::types::Class> = if indent {
                     ["source_line", "indent"].try_into().unwrap()
                 } else {
@@ -536,7 +537,7 @@ impl Function {
                 { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
                 <hr/>
             </div>
-        : String)
+        )
     }
 }
 
@@ -554,7 +555,7 @@ impl Constant {
                 { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
                 <hr/>
             </div>
-        : String)
+        )
     }
 }
 
@@ -583,13 +584,12 @@ fn render_section_from_slice<'a, T, U: IntoIterator<Item = Box<dyn FlowContent<S
                     </div>
                     <div class=["vis_toggle_wrapper", "mid_justify"]>
                         <button
-                            onclick={ format!(r#"toggle_vis("{all_id}")"#) }
                             id={ &*format!("{all_id}.vis_button") }
                             class="vis_toggle"
                         >"Group -"</button>
                     </div>
                 </div>
-            : String) as Box<dyn FlowContent<String>>)
+            ) as Box<dyn FlowContent<String>>)
                 .into_iter()
                 .chain(html!(
                     <div id={ &*all_id } class=section_class>
@@ -695,7 +695,7 @@ fn sidebar_sections_members_functions_pair<'a>(
     ))
 }
 
-fn render_sidebar<T: OutputType + 'static + Send>(data: SidebarData) -> Box<dyn FlowContent<T>> {
+fn render_sidebar(data: SidebarData) -> Box<dyn FlowContent<String>> {
     html!(
         <nav id="sidebar">
             <div id="sidebar_main_link_container">
