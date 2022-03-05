@@ -297,20 +297,20 @@ impl LinkedSectionKind {
 
     fn get_href(&self) -> String {
         match &self {
-            LinkedSectionKind::Struct { link } => format!("struct.{}.html", link.join(".")),
-            LinkedSectionKind::Class { link } => format!("class.{}.html", link.join(".")),
-            LinkedSectionKind::Enum { link } => format!("enum.{}.html", link.join(".")),
+            LinkedSectionKind::Struct { link } => format!("/struct.{}.html", link.join(".")),
+            LinkedSectionKind::Class { link } => format!("/class.{}.html", link.join(".")),
+            LinkedSectionKind::Enum { link } => format!("/enum.{}.html", link.join(".")),
             LinkedSectionKind::Function { owner, link } => {
-                format!("{}#function.{}", owner.get_href_prelude(), link)
+                format!("/{}#function.{}", owner.get_href_prelude(), link)
             }
             LinkedSectionKind::Member { owner, link } => {
-                format!("{}#member.{}", owner.get_href_prelude(), link)
+                format!("/{}#member.{}", owner.get_href_prelude(), link)
             }
             LinkedSectionKind::Enumerator { owner, link } => {
-                format!("{}#enumerator.{}", owner.get_href_prelude(), link)
+                format!("/{}#enumerator.{}", owner.get_href_prelude(), link)
             }
             LinkedSectionKind::Constant { owner, link } => {
-                format!("{}#constant.{}", owner.get_href_prelude(), link)
+                format!("/{}#constant.{}", owner.get_href_prelude(), link)
             }
         }
     }
@@ -700,7 +700,7 @@ fn render_sidebar(data: SidebarData) -> Box<dyn FlowContent<String>> {
         <nav id="sidebar">
             <div id="sidebar_main_link_container">
                 <div class="sidebar_padder">
-                    <h1 id="sidebar_main_link"><a href="index.html">
+                    <h1 id="sidebar_main_link"><a href="/index.html">
                         { text!(data.docs_name) } " Documentation"
                     </a></h1>
                 </div>
@@ -797,7 +797,7 @@ impl Class {
                         <div class="doc_main">
                             <h1 class="main_heading">
                                 "Class "
-                                <a href={ format!("class.{}.html", self.name) } class="class">
+                                <a href={ format!("/class.{}.html", self.name) } class="class">
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
@@ -805,7 +805,7 @@ impl Class {
                                 self.inherits.as_ref().map(|i| html!(
                                     <h1 class="inherits">
                                         "inherits from "
-                                        <a href={ format!("class.{}.html", i) } class="class">
+                                        <a href={ format!("/class.{}.html", i) } class="class">
                                             { text!(add_zws(i)) }
                                         </a>
                                     </h1>
@@ -842,7 +842,7 @@ impl Class {
                                 "struct",
                                 &self.inner_structs.iter().map(|s| SummaryGridRow {
                                     name: s.name.clone(),
-                                    link: format!("struct.{}.html", s.name),
+                                    link: format!("/struct.{}.html", s.name),
                                     doc_comment: s.doc_comment.clone()
                                 }).collect_vec()
                             )
@@ -853,7 +853,7 @@ impl Class {
                                 "enum",
                                 &self.inner_enums.iter().map(|e| SummaryGridRow {
                                     name: e.name.clone(),
-                                    link: format!("enum.{}.html", e.name),
+                                    link: format!("/enum.{}.html", e.name),
                                     doc_comment: e.doc_comment.clone()
                                 }).collect_vec()
                             )
@@ -908,7 +908,7 @@ impl Struct {
                         <div class="doc_main">
                             <h1 class="main_heading">
                                 "Struct "
-                                <a href={ format!("struct.{}.html", self.name) } class="struct">
+                                <a href={ format!("/struct.{}.html", self.name) } class="struct">
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
@@ -936,7 +936,7 @@ impl Struct {
                                 "enum",
                                 &self.inner_enums.iter().map(|e| SummaryGridRow {
                                     name: e.name.clone(),
-                                    link: format!("enum.{}.html", e.name),
+                                    link: format!("/enum.{}.html", e.name),
                                     doc_comment: e.doc_comment.clone()
                                 }).collect_vec()
                             )
@@ -993,7 +993,7 @@ impl Enum {
                         <div class="doc_main">
                             <h1 class="main_heading">
                                 "Enum "
-                                <a href={ format!("enum.{}.html", self.name) } class="enum">
+                                <a href={ format!("/enum.{}.html", self.name) } class="enum">
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
@@ -1054,7 +1054,7 @@ impl Documentation {
                     <div class="doc_row">
                         <div class="doc_main">
                             <h1 class="main_heading">
-                                <a href="index.html"> { text!(&self.name) } </a>
+                                <a href="/index.html"> { text!(&self.name) } </a>
                                 " Documentation"
                             </h1>
                         </div>
@@ -1077,7 +1077,7 @@ impl Documentation {
                             "class",
                             &self.classes.iter().map(|c| SummaryGridRow {
                                 name: c.name.clone(),
-                                link: format!("class.{}.html", c.name),
+                                link: format!("/class.{}.html", c.name),
                                 doc_comment: c.doc_comment.clone()
                             }).collect_vec()
                         )
@@ -1089,7 +1089,7 @@ impl Documentation {
                             "struct",
                             &self.structs.iter().map(|s| SummaryGridRow {
                                 name: s.name.clone(),
-                                link: format!("struct.{}.html", s.name),
+                                link: format!("/struct.{}.html", s.name),
                                 doc_comment: s.doc_comment.clone()
                             }).collect_vec()
                         )
@@ -1101,7 +1101,7 @@ impl Documentation {
                             "enum",
                             &self.enums.iter().map(|e| SummaryGridRow {
                                 name: e.name.clone(),
-                                link: format!("enum.{}.html", e.name),
+                                link: format!("/enum.{}.html", e.name),
                                 doc_comment: e.doc_comment.clone()
                             }).collect_vec()
                         )
