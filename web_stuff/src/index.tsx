@@ -173,11 +173,6 @@ function add_zws(text: string): string {
     for (const c of [".", "_"]) {
         text = text.replace(c, `\u{200B}${c}`);
     }
-    const ALPHA = Array.from(Array(26)).map((_, i) => i + 65);
-    const ALPHABET = ALPHA.map((x) => String.fromCharCode(x));
-    for (const c of ALPHABET) {
-        text = text.replace(c, `\u{200B}${c}`);
-    }
     return text;
 }
 function render_search_results(results: Fuzzysort.KeysResults<SearchResult>) {

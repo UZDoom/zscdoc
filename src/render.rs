@@ -27,7 +27,7 @@ pub struct SidebarData {
 
 fn add_zws(text: &str) -> String {
     let mut text = text.to_string();
-    for c in ['.', '_'].into_iter().chain('A'..'Z') {
+    for c in ['.', '_'] {
         text = text.replace(&c.to_string(), &format!("\u{200B}{c}"))
     }
     text
