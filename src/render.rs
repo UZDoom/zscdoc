@@ -50,7 +50,7 @@ fn render_html_boilerplate(
                 <title> { text!(title) } </title>
                 <link rel="icon" type="image/x-icon" href="/favicon.png"/>
                 <link rel="stylesheet" href="/main.css"/>
-                <script src="main.js"></script>
+                <script src="main.bundle.js"></script>
                 <meta charset="UTF-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
             </head>
