@@ -16,7 +16,7 @@ fn should_skip(doc_comment: Option<&StringSymbol>) -> bool {
         return false;
     };
     let doc_comment = doc_comment.string();
-    doc_comment.trim() == "?doc: hidden"
+    doc_comment.trim_start().starts_with("?doc: hidden")
 }
 
 impl SourceCodeWithLinks {
