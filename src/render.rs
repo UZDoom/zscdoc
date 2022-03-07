@@ -790,7 +790,7 @@ impl Class {
         };
         let docs_id = &format!("class.{}.docs", self.name);
         render_html_boilerplate(
-            &format!("Class {}", self.name),
+            &format!("Class {} - {}", self.name, docs_name),
             html!(
                 <div>
                     <div class="doc_row">
@@ -901,7 +901,7 @@ impl Struct {
         };
         let docs_id = format!("struct.{}.docs", self.name);
         render_html_boilerplate(
-            &format!("Struct {}", self.name),
+            &format!("Struct {} - {}", self.name, docs_name),
             html!(
                 <div>
                     <div class="doc_row">
@@ -986,7 +986,7 @@ impl Enum {
         };
         let docs_id = format!("enum.{}.docs", self.name);
         render_html_boilerplate(
-            &format!("Enum {}", self.name),
+            &format!("Enum {} - {}", self.name, docs_name),
             html!(
                 <div>
                     <div class="doc_row">
@@ -1048,7 +1048,7 @@ impl Documentation {
         };
         let docs_id = "summary_doc";
         render_html_boilerplate(
-            &format!("{} Documentation", self.name),
+            &format!("{0} Documentation - {0}", self.name),
             html!(
                 <div>
                     <div class="doc_row">
@@ -1111,4 +1111,36 @@ impl Documentation {
             sidebar_data,
         )
     }
+}
+
+pub fn render_from_markdown(
+    docs_name: &str,
+    name: &str,
+    markdown: &str,
+    link: &str,
+    item_provider: &ItemProvider,
+) -> DOMTree<String> {
+    let sections = vec![];
+    let sidebar_data = SidebarData {
+        docs_name: docs_name.to_string(),
+        title: name.to_string(),
+        sections,
+    };
+    render_html_boilerplate(
+        &format!("{} - {}", name, docs_name),
+        html!(
+            <div>
+                <div class="doc_row">
+                    <div class="doc_main">
+                        <h1 class="main_heading">
+                            <a href={ link }> { text!(name) } </a>
+                        </h1>
+                    </div>
+                </div>
+                <hr/>
+                { render_doc_comment(markdown, true, "content", item_provider, &[]) }
+            </div>
+        ),
+        sidebar_data,
+    )
 }

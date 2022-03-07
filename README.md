@@ -1,4 +1,3 @@
-
 # zscdoc
 ### A GZDoom ZScript documentation generation tool
 
@@ -17,12 +16,41 @@ GitHub/GitLab pages.
     A path containing ZScript code (note that a file named `zscript` (extension-agnostic)
     is currently expected in the folder to know what to include)
 
-- `--nice-name`/`-n`:
-    The name of your project, for purposes of quoting directly into the HTML. This is essentially
-    the "brand name" of your project.
-
 - `--output`/`-o`:
     The name of folder to output documentation into.
+
+The following files are used if found inside your archive:
+
+- `docs/summary.md`:
+    Markdown that will be added to the summary page. You can use this to give a documentation
+    overview of your project as a whole, including linking to other markdown files defined in the
+    configuration file.
+
+- `docs/zscdoc.toml`:
+    A `TOML`-formatted configuration file that allows you to lay out specific project structure.
+    Example configuration file:
+
+    ```toml
+    [archive]
+    nice_name = "ZForms"
+
+    [[archive.markdown_file]]
+    filename = "test.md"
+    title = "Test"
+    ```
+
+    In the above example, `nice_name` is the name that will be quoted into the documentation when
+    relevant.
+
+    An `[[archive.markdown_file]]` block allows you to put a markdown file into your documentation.
+    Note that files added like this will have their `.md` extension replaced with `.html` in the
+    generated docs. You can use multiple of these to add multiple `.md` files. Note that if a
+    filename would clash with a generated documentation file, the generated documentation wins. To
+    avoid this, don't call files things like `index.md` or `class.Something.md`, for example.
+
+- `docs/favicon.png`:
+    The favicon for the page to use. As of right now if one isn't given your page will be missing a
+    favicon.
 
 ## Installing
 

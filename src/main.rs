@@ -7,7 +7,7 @@ mod document;
 mod render;
 mod search;
 
-use crate::item::ItemProvider;
+use crate::{item::ItemProvider, render::render_from_markdown};
 use clap::Parser;
 use zscript_parser::{
     filesystem::{FileSystem, Files, GZDoomFolderFileSystem},
@@ -24,13 +24,6 @@ struct Args {
     //depends: Vec<String>,
     #[clap(short, long, help = "Path to the folder to document")]
     folder: String,
-
-    #[clap(
-        short,
-        long,
-        help = "The name of the library to use for quoting into the documentation"
-    )]
-    nice_name: String,
 
     #[clap(short, long, help = "Path for the output folder")]
     output: String,
@@ -52,12 +45,36 @@ struct Assets;
 #[folder = "web_stuff/dist"]
 struct Assets;
 
+#[derive(serde::Deserialize, Debug)]
+struct Config {
+    archive: Archive,
+}
+
+#[derive(serde::Deserialize, Debug)]
+struct Archive {
+    nice_name: String,
+    markdown_file: Option<Vec<MarkdownFile>>,
+}
+
+#[derive(serde::Deserialize, Debug)]
+struct MarkdownFile {
+    filename: String,
+    title: String,
+}
+
+struct MarkdownFileToRender {
+    output_filename: String,
+    title: String,
+    markdown: String,
+}
+
 fn save_docs_to_folder(
     output: &str,
     docs: &structures::Documentation,
     delete_without_confirm: bool,
     item_provider: &ItemProvider,
     favicon: Option<&[u8]>,
+    markdown_files: &[MarkdownFileToRender],
 ) -> anyhow::Result<()> {
     use std::fs::*;
     use std::io::*;
@@ -78,6 +95,22 @@ fn save_docs_to_folder(
         }
     }
     create_dir(&path)?;
+    for m in markdown_files {
+        let mut file = File::create(path.join(&*m.output_filename))?;
+        file.write_all(
+            format!(
+                "<!DOCTYPE html>{}",
+                render_from_markdown(
+                    &docs.name,
+                    &m.title,
+                    &m.markdown,
+                    &m.output_filename,
+                    item_provider,
+                )
+            )
+            .as_bytes(),
+        )?;
+    }
     for asset_path in Assets::iter() {
         let mut file = File::create(path.join(&*asset_path))?;
         file.write_all(&Assets::get(&*asset_path).unwrap().data)?;
@@ -158,8 +191,26 @@ fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let mut filesystem = GZDoomFolderFileSystem::new(args.folder, args.nice_name.clone())
+    let mut filesystem = GZDoomFolderFileSystem::new(args.folder.clone(), args.folder.clone())
         .context("couldn't load a path")?;
+
+    let config_file = filesystem.get_file("docs/zscdoc.toml");
+    let config_file = config_file.as_ref().map(|s| s.text());
+
+    let config: Config = dbg!(if let Some(c) = config_file {
+        toml::from_str(c).context("config file parsing failed")?
+    } else {
+        Config {
+            archive: Archive {
+                nice_name: args.folder.clone(),
+                markdown_file: None,
+            },
+        }
+    });
+
+    let mut filesystem =
+        GZDoomFolderFileSystem::new(args.folder.clone(), config.archive.nice_name.clone())
+            .context("couldn't load a path")?;
 
     let summary_doc = filesystem
         .get_file("docs/summary.md")
@@ -168,6 +219,30 @@ fn main() -> anyhow::Result<()> {
 
     let favicon = filesystem.get_file("docs/favicon.png");
     let favicon = favicon.as_ref().map(|s| s.data());
+
+    let markdown_files: Result<Vec<_>, _> = config
+        .archive
+        .markdown_file
+        .unwrap_or_default()
+        .iter()
+        .map(|m| {
+            let output_filename = if let Some(s) = m.filename.strip_suffix(".md") {
+                format!("{}.html", s)
+            } else {
+                anyhow::bail!("file {:?} didn't have extension .md", m.filename);
+            };
+            let filename_to_get = format!("docs/{}", m.filename);
+            let file = filesystem
+                .get_file(&filename_to_get)
+                .context(format!("file {:?} didn't exist", filename_to_get))?;
+            Ok(MarkdownFileToRender {
+                output_filename,
+                title: m.title.clone(),
+                markdown: file.text().to_string(),
+            })
+        })
+        .collect();
+    let markdown_files = markdown_files?;
 
     let mut files = Files::default();
     let mut errs = vec![];
@@ -182,14 +257,20 @@ fn main() -> anyhow::Result<()> {
     }
 
     let item_provider = hir.to_item_provider(&files);
-    let docs =
-        document::hir_to_doc_structures(summary_doc, args.nice_name, &hir, &files, &item_provider);
+    let docs = document::hir_to_doc_structures(
+        summary_doc,
+        config.archive.nice_name,
+        &hir,
+        &files,
+        &item_provider,
+    );
     save_docs_to_folder(
         &args.output,
         &docs,
         args.delete_without_confirm,
         &item_provider,
         favicon,
+        &markdown_files,
     )
     .unwrap();
 
