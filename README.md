@@ -33,6 +33,7 @@ The following files are used if found inside your archive:
     ```toml
     [archive]
     nice_name = "ZForms"
+    base_file = "ZForms/include"
 
     [[archive.markdown_file]]
     filename = "test.md"
@@ -41,6 +42,10 @@ The following files are used if found inside your archive:
 
     In the above example, `nice_name` is the name that will be quoted into the documentation when
     relevant.
+
+    `base_file` is optional (defaulting to `"zscript"`) and determines what will be treated as the
+    starting point for the archive. This is to avoid having to create a `zscript` file that simply
+    includes some other actually-intended include file.
 
     An `[[archive.markdown_file]]` block allows you to put a markdown file into your documentation.
     Note that files added like this will have their `.md` extension replaced with `.html` in the
@@ -73,4 +78,5 @@ containing `Cargo.toml`.
 This is because in development mode, the program reads the static JavaScript and CSS files at runtime
 and doesn't include them in the binary. Then, to avoid pointlessly recompiling the Rust parts of the program
 every time the JS/CSS parts are changed, `npm` must be run manually. See the `Justfile` in the repo for
-a simple example of how to do this using the included `zforms` example in `test_data/`.
+a simple example of how to do this using the included `zforms` example in `test_data/`. Note that
+you must install the node dependencies via `npm install` first.

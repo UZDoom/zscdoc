@@ -1,5 +1,6 @@
 [archive]
 nice_name = "ZForms"
+base_file = "zforms/include"
 
 [[archive.markdown_file]]
 filename = "test.md"

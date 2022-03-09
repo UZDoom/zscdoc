@@ -163,7 +163,7 @@ export default async () => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const search_node = document.getElementById("search")!;
 
-    search_node.onkeydown = e => {
+    search_node.onkeydown = (e) => {
         if (e.key == "Escape") {
             (e.target as HTMLElement).blur();
         }
@@ -177,4 +177,4 @@ export default async () => {
         }
         remove_search_results();
     });
-}
+};

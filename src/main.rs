@@ -12,7 +12,7 @@ use clap::Parser;
 use zscript_parser::{
     filesystem::{FileSystem, Files, GZDoomFolderFileSystem},
     hir::lower::HirLowerer,
-    parser_manager::parse_filesystem,
+    parser_manager::{parse_filesystem_config, ParseFileSystemConfig},
 };
 
 use crate::item::ToItemProvider;
@@ -20,8 +20,6 @@ use crate::item::ToItemProvider;
 #[derive(Parser, Debug)]
 #[clap(author, version, about = "zscript documentation generator", long_about = None)]
 struct Args {
-    //#[clap(short, long, help = "Adds a path as a dependency")]
-    //depends: Vec<String>,
     #[clap(short, long, help = "Path to the folder to document")]
     folder: String,
 
@@ -50,9 +48,14 @@ struct Config {
     archive: Archive,
 }
 
+fn base_file_default() -> String {
+    "zscript".to_string()
+}
 #[derive(serde::Deserialize, Debug)]
 struct Archive {
     nice_name: String,
+    #[serde(default = "base_file_default")]
+    base_file: String,
     markdown_file: Option<Vec<MarkdownFile>>,
 }
 
@@ -203,6 +206,7 @@ fn main() -> anyhow::Result<()> {
         Config {
             archive: Archive {
                 nice_name: args.folder.clone(),
+                base_file: base_file_default(),
                 markdown_file: None,
             },
         }
@@ -246,7 +250,10 @@ fn main() -> anyhow::Result<()> {
 
     let mut files = Files::default();
     let mut errs = vec![];
-    let parsed = parse_filesystem(filesystem, &mut files, &mut errs);
+    let options = ParseFileSystemConfig {
+        root_name: &config.archive.base_file,
+    };
+    let parsed = parse_filesystem_config(filesystem, &mut files, &mut errs, &options);
     let hir = HirLowerer::new(&mut errs).lower(vec![parsed]).hir;
 
     if !errs.is_empty() {

@@ -4,7 +4,7 @@ class ZF_ToggleButton : ZF_ButtonBase {
 	protected bool hover;
 	protected bool click;
 
-	deprecated("0.5.0", "dont use plz") void config(
+	void config(
 		string text = "",
 		ZF_ButtonAnimator animator = NULL,
 		Font fnt = NULL, double textScale = 1, int textColor = Font.CR_WHITE,
