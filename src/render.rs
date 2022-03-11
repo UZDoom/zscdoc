@@ -292,6 +292,8 @@ impl LinkedSectionKind {
             LinkedSectionKind::Member { .. } => "member",
             LinkedSectionKind::Enumerator { .. } => "constant",
             LinkedSectionKind::Constant { .. } => "constant",
+            LinkedSectionKind::Property { .. } => "default",
+            LinkedSectionKind::Flag { .. } => "default",
         }
     }
 
@@ -311,6 +313,12 @@ impl LinkedSectionKind {
             }
             LinkedSectionKind::Constant { owner, link } => {
                 format!("/{}#constant.{}", owner.get_href_prelude(), link)
+            }
+            LinkedSectionKind::Property { owner, link } => {
+                format!("/{}#property.{}", owner.get_href_prelude(), link)
+            }
+            LinkedSectionKind::Flag { owner, link } => {
+                format!("/{}#flag.{}", owner.get_href_prelude(), link)
             }
         }
     }
@@ -559,6 +567,42 @@ impl Constant {
     }
 }
 
+impl Property {
+    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
+        let docs_id = format!("property.{}.docs", self.name);
+        html!(
+            <div>
+                <div class="doc_row" id={ Id::new(format!("property.{}", self.name)) }>
+                    <div class="doc_main">
+                        { self.def.render() }
+                    </div>
+                    { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
+                </div>
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
+                <hr/>
+            </div>
+        )
+    }
+}
+
+impl Flag {
+    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
+        let docs_id = format!("flag.{}.docs", self.name);
+        html!(
+            <div>
+                <div class="doc_row" id={ Id::new(format!("flag.{}", self.name)) }>
+                    <div class="doc_main">
+                        { self.def.render() }
+                    </div>
+                    { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
+                </div>
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
+                <hr/>
+            </div>
+        )
+    }
+}
+
 fn render_section_from_slice<'a, T, U: IntoIterator<Item = Box<dyn FlowContent<String>>>>(
     name: &str,
     id: &str,
@@ -746,6 +790,24 @@ impl Class {
                     link: format!("#constant.{}", v.name),
                 }
             })
+            .chain(sidebar_sections_from_slice(
+                "Properties",
+                "#properties",
+                &self.properties,
+                |v| SidebarSection::Text {
+                    text: v.name.clone(),
+                    link: format!("#property.{}", v.name),
+                },
+            ))
+            .chain(sidebar_sections_from_slice(
+                "Flags",
+                "#flags",
+                &self.overrides,
+                |v| SidebarSection::Text {
+                    text: v.name.clone(),
+                    link: format!("#flag.{}", v.name),
+                },
+            ))
             .chain(
                 [
                     ("Public", &self.public),
@@ -822,6 +884,20 @@ impl Class {
                             |v| {
                                 v.render(item_provider)
                             }
+                        ).chain(
+                            render_section_from_slice(
+                                "Properties", "properties", "", &self.properties, false,
+                                |v| {
+                                    v.render(item_provider)
+                                }
+                            )
+                        ).chain(
+                            render_section_from_slice(
+                                "Flags", "flags", "", &self.flags, false,
+                                |v| {
+                                    v.render(item_provider)
+                                }
+                            )
                         ).chain(
                             [
                                 ("Public", &self.public, false),

@@ -23,6 +23,7 @@ $enum_fg: #508157;
 $function_fg: #9a6e31;
 $member_fg: #9c38ff;
 $constant_fg: #0e4a94;
+$default_fg: #b55656;
 
 $deprecated_fg: #a90003;
 
@@ -69,6 +70,9 @@ span {
 }
 .constant {
   color: $constant_fg;
+}
+.default {
+  color: $default_fg;
 }
 
 %doc_comment_common {

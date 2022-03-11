@@ -200,7 +200,7 @@ fn main() -> anyhow::Result<()> {
     let config_file = filesystem.get_file("docs/zscdoc.toml");
     let config_file = config_file.as_ref().map(|s| s.text());
 
-    let config: Config = dbg!(if let Some(c) = config_file {
+    let config: Config = if let Some(c) = config_file {
         toml::from_str(c).context("config file parsing failed")?
     } else {
         Config {
@@ -210,7 +210,7 @@ fn main() -> anyhow::Result<()> {
                 markdown_file: None,
             },
         }
-    });
+    };
 
     let mut filesystem =
         GZDoomFolderFileSystem::new(args.folder.clone(), config.archive.nice_name.clone())

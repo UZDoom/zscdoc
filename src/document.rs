@@ -468,6 +468,59 @@ fn reconstruct_static_const_array_declaration(
     ret
 }
 
+fn reconstruct_property(
+    owner: Owner,
+    prop: &ir_common::PropertyDefinition,
+    _item_provider: &ItemProvider,
+    _context: &[NameSymbol],
+    files: &Files,
+) -> SourceCodeWithLinks {
+    let mut ret = SourceCodeWithLinks { sections: vec![] };
+    ret.add_no_link("property ");
+    let name = files.text_from_span(prop.name.span);
+    ret.add_link(
+        name,
+        LinkedSectionKind::Property {
+            owner,
+            link: name.to_string(),
+        },
+    );
+    ret.add_no_link(": ");
+    let mut first = true;
+    for id in prop.vars.iter() {
+        if !first {
+            ret.add_no_link(", ");
+        }
+        first = false;
+        ret.add_no_link(files.text_from_span(id.span));
+    }
+    ret
+}
+
+fn reconstruct_flagdef(
+    owner: Owner,
+    flag: &ir_common::FlagDefinition,
+    _item_provider: &ItemProvider,
+    _context: &[NameSymbol],
+    files: &Files,
+) -> SourceCodeWithLinks {
+    let mut ret = SourceCodeWithLinks { sections: vec![] };
+    ret.add_no_link("flagdef ");
+    let name = files.text_from_span(flag.flag_name.span);
+    ret.add_link(
+        name,
+        LinkedSectionKind::Flag {
+            owner,
+            link: name.to_string(),
+        },
+    );
+    ret.add_no_link(": ");
+    ret.add_no_link(files.text_from_span(flag.var_name.span));
+    ret.add_no_link(", ");
+    ret.add_no_link(files.text_from_span(flag.shift.span));
+    ret
+}
+
 fn transform_deprecated(d: &hir::Deprecated) -> Deprecated {
     Deprecated {
         version: format!(
@@ -505,6 +558,8 @@ fn class_doc(
         inner_structs: vec![],
         inner_enums: vec![],
         constants: vec![],
+        properties: vec![],
+        flags: vec![],
     };
     for (_, node) in c.inners.iter() {
         let inner_name = files.text_from_span(node[0].name().span);
@@ -677,7 +732,46 @@ fn class_doc(
                 };
                 class_to_add.constants.push(const_to_add);
             }
-            _ => {}
+            hir::ClassInnerKind::Property(p) => {
+                if should_skip(p.doc_comment.as_ref()) {
+                    continue;
+                }
+                let owner = Owner::Class(vec![name.to_string()]);
+                let prop_to_add = Property {
+                    context: class_to_add.context.clone(),
+                    name: inner_name.to_string(),
+                    doc_comment: p
+                        .doc_comment
+                        .map(|s| s.string().to_string())
+                        .unwrap_or_else(|| "".to_string()),
+                    span: p.span,
+                    def: reconstruct_property(
+                        owner,
+                        p,
+                        item_provider,
+                        &class_to_add.context,
+                        files,
+                    ),
+                };
+                class_to_add.properties.push(prop_to_add);
+            }
+            hir::ClassInnerKind::Flag(f) => {
+                if should_skip(f.doc_comment.as_ref()) {
+                    continue;
+                }
+                let owner = Owner::Class(vec![name.to_string()]);
+                let flag_to_add = Flag {
+                    context: class_to_add.context.clone(),
+                    name: inner_name.to_string(),
+                    doc_comment: f
+                        .doc_comment
+                        .map(|s| s.string().to_string())
+                        .unwrap_or_else(|| "".to_string()),
+                    span: f.span,
+                    def: reconstruct_flagdef(owner, f, item_provider, &class_to_add.context, files),
+                };
+                class_to_add.flags.push(flag_to_add);
+            }
         }
     }
     class_to_add.constants.sort_unstable_by_key(|x| x.span);
@@ -952,7 +1046,7 @@ pub fn hir_to_doc_structures(
                 };
                 docs.constants.push(const_to_add);
             }
-            hir::TopLevelDefinitionKind::MixinClass(_m) => { /* TODO */ }
+            hir::TopLevelDefinitionKind::MixinClass(_) => {}
         }
     }
     docs.classes.sort_unstable_by(|a, b| a.name.cmp(&b.name));

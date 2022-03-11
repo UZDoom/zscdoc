@@ -17,6 +17,8 @@ pub enum LinkedSectionKind {
     Member { owner: Owner, link: String },
     Enumerator { owner: Owner, link: String },
     Constant { owner: Owner, link: String },
+    Property { owner: Owner, link: String },
+    Flag { owner: Owner, link: String },
 }
 
 #[derive(Debug)]
@@ -63,6 +65,22 @@ pub struct Function {
     pub deprecated: Option<Deprecated>,
 }
 
+pub struct Property {
+    pub context: Vec<NameSymbol>,
+    pub name: String,
+    pub span: Span,
+    pub doc_comment: String,
+    pub def: SourceCodeWithLinks,
+}
+
+pub struct Flag {
+    pub context: Vec<NameSymbol>,
+    pub name: String,
+    pub span: Span,
+    pub doc_comment: String,
+    pub def: SourceCodeWithLinks,
+}
+
 pub struct Constant {
     pub context: Vec<NameSymbol>,
     pub doc_comment: String,
@@ -91,6 +109,8 @@ pub struct Class {
     pub inner_structs: Vec<Struct>,
     pub inner_enums: Vec<Enum>,
     pub constants: Vec<Constant>,
+    pub properties: Vec<Property>,
+    pub flags: Vec<Flag>,
 }
 
 pub struct Struct {
