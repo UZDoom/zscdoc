@@ -202,21 +202,12 @@ fn get_filesystem(path: &str) -> anyhow::Result<(GZDoomFolderFileSystem, Config)
     let mut filesystem = GZDoomFolderFileSystem::new(path.to_string(), path.to_string())
         .context("couldn't load a path")?;
 
-    let config_file = filesystem.get_file("docs/zscdoc.toml");
-    let config_file = config_file.as_ref().map(|s| s.text());
+    let config_file = filesystem
+        .get_file("docs/zscdoc.toml")
+        .context("couldn't find zscdoc.toml")?;
+    let config_file = config_file.text();
 
-    let config: Config = if let Some(c) = config_file {
-        toml::from_str(c).context("config file parsing failed")?
-    } else {
-        Config {
-            archive: Archive {
-                nice_name: path.to_string(),
-                base_file: base_file_default(),
-                markdown_file: None,
-            },
-            dependency: None,
-        }
-    };
+    let config: Config = toml::from_str(config_file).context("config file parsing failed")?;
 
     let filesystem =
         GZDoomFolderFileSystem::new(path.to_string(), config.archive.nice_name.clone())
@@ -236,6 +227,7 @@ fn option_slice_to_slice<T>(v: Option<&[T]>) -> &[T] {
 fn collect_dependencies(
     dependencies: &[Dependency],
 ) -> anyhow::Result<Vec<(GZDoomFolderFileSystem, Config, String)>> {
+    use anyhow::Context;
     use std::collections::HashSet;
     fn recurse(
         dependencies: &[Dependency],
@@ -243,7 +235,8 @@ fn collect_dependencies(
         seen: &mut HashSet<String>,
     ) -> anyhow::Result<()> {
         for d in dependencies.iter() {
-            let (filesystem, config) = get_filesystem(&d.path)?;
+            let (filesystem, config) =
+                get_filesystem(&d.path).context(format!("loading dependency {}", d.path))?;
             if seen.contains(&config.archive.nice_name) {
                 continue;
             }
@@ -267,7 +260,7 @@ fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let (mut filesystem, config) = get_filesystem(&args.folder)?;
+    let (mut filesystem, config) = get_filesystem(&args.folder).context("loading main archive")?;
 
     let summary_doc = filesystem
         .get_file("docs/summary.md")
@@ -346,8 +339,7 @@ fn main() -> anyhow::Result<()> {
         &item_provider,
         favicon,
         &markdown_files,
-    )
-    .unwrap();
+    )?;
 
     Ok(())
 }

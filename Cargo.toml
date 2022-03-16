@@ -11,7 +11,7 @@ clap = { version = "3.1.1", features = ["derive"] }
 comrak = "0.12.1"
 itertools = "0.10.3"
 once_cell = "1.9.0"
-typed-html = { git = "https://github.com/bodil/typed-html" }
+typed-html = { git = "https://github.com/bodil/typed-html", rev = "e18d328951b6b9216976d180f3dea2e6600a3982" }
 rust-embed = { version = "6.3.0", features = ["compression", "interpolate-folder-path"] }
 zscript_parser = { git = "https://gitlab.com/Gutawer/zscript_parser", features = ["multithreaded", "gzd_folder_filesystem"] }
 serde = { version = "1.0.136", features = ["derive"] }

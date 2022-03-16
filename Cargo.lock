@@ -1387,7 +1387,7 @@ checksum = "a9b2228007eba4120145f785df0f6c92ea538f5a3635a612ecf4e334c8c1446d"
 [[package]]
 name = "typed-html"
 version = "0.2.2"
-source = "git+https://github.com/bodil/typed-html#e18d328951b6b9216976d180f3dea2e6600a3982"
+source = "git+https://github.com/bodil/typed-html?rev=e18d328951b6b9216976d180f3dea2e6600a3982#e18d328951b6b9216976d180f3dea2e6600a3982"
 dependencies = [
  "htmlescape",
  "language-tags",
@@ -1401,7 +1401,7 @@ dependencies = [
 [[package]]
 name = "typed-html-macros"
 version = "0.2.2"
-source = "git+https://github.com/bodil/typed-html#e18d328951b6b9216976d180f3dea2e6600a3982"
+source = "git+https://github.com/bodil/typed-html?rev=e18d328951b6b9216976d180f3dea2e6600a3982#e18d328951b6b9216976d180f3dea2e6600a3982"
 dependencies = [
  "ansi_term",
  "lalrpop",
