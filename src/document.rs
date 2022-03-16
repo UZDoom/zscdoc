@@ -6,7 +6,7 @@ use zscript_parser::{
     filesystem::Files,
     hir,
     interner::{NameSymbol, StringSymbol},
-    ir_common::{self, Identifier},
+    ir_common,
 };
 
 fn should_skip(doc_comment: Option<&StringSymbol>) -> bool {
@@ -29,11 +29,8 @@ impl SourceCodeWithLinks {
         }
     }
 
-    fn add_link(&mut self, text: &str, kind: LinkedSectionKind) {
-        self.sections.push(SourceCodeSection::Linked(LinkedSection {
-            text: text.to_string(),
-            kind,
-        }));
+    fn add_link(&mut self, sec: LinkedSection) {
+        self.sections.push(SourceCodeSection::Linked(sec));
     }
 
     fn add_newline_indent_or_spacing(&mut self) {
@@ -88,26 +85,30 @@ fn function_flag_to_string(flag: hir::FunctionFlags) -> &'static str {
     }
 }
 
-fn add_type_if_possible(
+fn add_type_if_possible<T, U>(
     fallback: &str,
-    chain: &[Identifier],
+    chain: U,
     item_provider: &ItemProvider,
     context: &[NameSymbol],
     prefix_dot_if_long_chain: bool,
     source: &mut SourceCodeWithLinks,
-) {
-    match item_provider.resolve(context, chain.iter().map(|x| x.symbol)) {
+) where
+    T: Into<NameSymbol>,
+    U: IntoIterator<Item = T>,
+    U::IntoIter: Clone,
+{
+    match item_provider.resolve(context, chain.into_iter().map(|x| x.into())) {
         Some(cur_link_sections) => {
             if prefix_dot_if_long_chain && cur_link_sections.len() > 1 {
                 source.add_no_link(".");
             }
             let mut first = true;
-            for (text, sec) in cur_link_sections {
+            for sec in cur_link_sections {
                 if !first {
                     source.add_no_link(".");
                 }
                 first = false;
-                source.add_link(&text, sec);
+                source.add_link((*sec).clone());
             }
         }
         None => {
@@ -193,7 +194,14 @@ fn add_type_to_source(
                     );
                 }
                 None => {
-                    source.add_no_link("Object");
+                    add_type_if_possible(
+                        "Object",
+                        [zscript_parser::interner::intern_name("Object")],
+                        item_provider,
+                        context,
+                        false,
+                        source,
+                    );
                 }
             }
             source.add_no_link(" >");
@@ -278,13 +286,11 @@ fn reconstruct_function_signature(
     }
 
     let name = files.text_from_span(func.name.span).to_string();
-    ret.add_link(
-        &name,
-        LinkedSectionKind::Function {
-            owner,
-            link: name.clone(),
-        },
-    );
+    ret.add_link(LinkedSection {
+        link_prefix: None,
+        text: name.clone(),
+        kind: LinkedSectionKind::Function { owner, link: name },
+    });
 
     ret.add_no_link("(");
     ret.add_newline_indent();
@@ -381,13 +387,11 @@ fn reconstruct_member_declaration(
     add_type_to_source(&member.member_type, item_provider, context, &mut ret, files);
     ret.add_no_link(" ");
     let name = files.text_from_span(member.name.span).to_string();
-    ret.add_link(
-        &name,
-        LinkedSectionKind::Member {
-            owner,
-            link: name.clone(),
-        },
-    );
+    ret.add_link(LinkedSection {
+        link_prefix: None,
+        text: name.clone(),
+        kind: LinkedSectionKind::Member { owner, link: name },
+    });
     ret
 }
 
@@ -398,13 +402,11 @@ fn reconstruct_enumerator_declaration(
 ) -> SourceCodeWithLinks {
     let mut ret = SourceCodeWithLinks { sections: vec![] };
     let name = files.text_from_span(variant.name.span).to_string();
-    ret.add_link(
-        &name,
-        LinkedSectionKind::Enumerator {
-            owner,
-            link: name.clone(),
-        },
-    );
+    ret.add_link(LinkedSection {
+        link_prefix: None,
+        text: name.clone(),
+        kind: LinkedSectionKind::Enumerator { owner, link: name },
+    });
     if let Some(e) = &variant.init {
         ret.add_no_link(" = ");
         ret.add_no_link(files.text_from_span(e.span.unwrap()));
@@ -421,13 +423,11 @@ fn reconstruct_constant_declaration(
     let mut ret = SourceCodeWithLinks { sections: vec![] };
     ret.add_no_link("const ");
     let name = files.text_from_span(constant.name.span).to_string();
-    ret.add_link(
-        &name,
-        LinkedSectionKind::Constant {
-            owner,
-            link: name.clone(),
-        },
-    );
+    ret.add_link(LinkedSection {
+        link_prefix: None,
+        text: name.clone(),
+        kind: LinkedSectionKind::Constant { owner, link: name },
+    });
     ret.add_no_link(" = ");
     ret.add_no_link(files.text_from_span(constant.expr.span.unwrap()));
     ret
@@ -445,13 +445,11 @@ fn reconstruct_static_const_array_declaration(
     add_type_to_source(&sca.arr_type, item_provider, context, &mut ret, files);
     ret.add_no_link("[] ");
     let name = files.text_from_span(sca.name.span).to_string();
-    ret.add_link(
-        &name,
-        LinkedSectionKind::Constant {
-            owner,
-            link: name.clone(),
-        },
-    );
+    ret.add_link(LinkedSection {
+        link_prefix: None,
+        text: name.clone(),
+        kind: LinkedSectionKind::Constant { owner, link: name },
+    });
     ret.add_no_link(" = {");
     ret.add_newline_indent();
     let mut first = true;
@@ -478,13 +476,14 @@ fn reconstruct_property(
     let mut ret = SourceCodeWithLinks { sections: vec![] };
     ret.add_no_link("property ");
     let name = files.text_from_span(prop.name.span);
-    ret.add_link(
-        name,
-        LinkedSectionKind::Property {
+    ret.add_link(LinkedSection {
+        link_prefix: None,
+        text: name.to_string(),
+        kind: LinkedSectionKind::Property {
             owner,
             link: name.to_string(),
         },
-    );
+    });
     ret.add_no_link(": ");
     let mut first = true;
     for id in prop.vars.iter() {
@@ -507,13 +506,14 @@ fn reconstruct_flagdef(
     let mut ret = SourceCodeWithLinks { sections: vec![] };
     ret.add_no_link("flagdef ");
     let name = files.text_from_span(flag.flag_name.span);
-    ret.add_link(
-        name,
-        LinkedSectionKind::Flag {
+    ret.add_link(LinkedSection {
+        link_prefix: None,
+        text: name.to_string(),
+        kind: LinkedSectionKind::Flag {
             owner,
             link: name.to_string(),
         },
-    );
+    });
     ret.add_no_link(": ");
     ret.add_no_link(files.text_from_span(flag.var_name.span));
     ret.add_no_link(", ");
@@ -546,7 +546,35 @@ fn class_doc(
         context: context_with(context, c.name.symbol),
         name: name.to_string(),
         span: c.span,
-        inherits: c.ancestor.map(|a| files.text_from_span(a.span).to_string()),
+        inherits: match name {
+            "Object" => None,
+            _ => {
+                let mut source = SourceCodeWithLinks { sections: vec![] };
+                match c.ancestor {
+                    Some(a) => {
+                        add_type_if_possible(
+                            files.text_from_span(a.span),
+                            Some(a),
+                            item_provider,
+                            context,
+                            false,
+                            &mut source,
+                        );
+                    }
+                    None => {
+                        add_type_if_possible(
+                            "Object",
+                            [zscript_parser::interner::intern_name("Object")],
+                            item_provider,
+                            context,
+                            false,
+                            &mut source,
+                        );
+                    }
+                }
+                Some(source)
+            }
+        },
         doc_comment: c
             .doc_comment
             .map(|s| s.string().to_string())
@@ -593,6 +621,7 @@ fn class_doc(
                                 let class_name = files.text_from_span(ancestor.name.span);
                                 let func_name = files.text_from_span(func.name.span);
                                 break Some(LinkedSection {
+                                    link_prefix: None,
                                     text: format!("{}.{}", class_name, func_name),
                                     kind: LinkedSectionKind::Function {
                                         owner: Owner::Class(vec![class_name.to_string()]),
@@ -996,6 +1025,7 @@ pub fn hir_to_doc_structures(
     hir: &hir::TopLevel,
     files: &Files,
     item_provider: &ItemProvider,
+    dependencies: &Dependencies,
 ) -> Documentation {
     let mut docs = Documentation {
         name: nice_name,
@@ -1006,6 +1036,9 @@ pub fn hir_to_doc_structures(
         summary_doc,
     };
     for (_, node) in hir.definitions.iter() {
+        if node[0].archive_num != dependencies.get_final_archive_num() {
+            continue;
+        }
         let name = files.text_from_span(node[0].name().span);
         match &node[0].kind {
             hir::TopLevelDefinitionKind::Class(c) => {

@@ -1,0 +1,7 @@
+[archive]
+nice_name = "Gutamatics"
+base_file = "gutamatics/include"
+
+[[dependency]]
+path = "test_data/gzdoom_pk3"
+url = "http://localhost:8081"

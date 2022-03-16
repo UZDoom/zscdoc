@@ -46,6 +46,13 @@ struct Assets;
 #[derive(serde::Deserialize, Debug)]
 struct Config {
     archive: Archive,
+    dependency: Option<Vec<Dependency>>,
+}
+
+#[derive(serde::Deserialize, Debug)]
+struct Dependency {
+    path: String,
+    url: String,
 }
 
 fn base_file_default() -> String {
@@ -189,12 +196,10 @@ fn save_docs_to_folder(
     Ok(())
 }
 
-fn main() -> anyhow::Result<()> {
+fn get_filesystem(path: &str) -> anyhow::Result<(GZDoomFolderFileSystem, Config)> {
     use anyhow::Context;
 
-    let args = Args::parse();
-
-    let mut filesystem = GZDoomFolderFileSystem::new(args.folder.clone(), args.folder.clone())
+    let mut filesystem = GZDoomFolderFileSystem::new(path.to_string(), path.to_string())
         .context("couldn't load a path")?;
 
     let config_file = filesystem.get_file("docs/zscdoc.toml");
@@ -205,16 +210,64 @@ fn main() -> anyhow::Result<()> {
     } else {
         Config {
             archive: Archive {
-                nice_name: args.folder.clone(),
+                nice_name: path.to_string(),
                 base_file: base_file_default(),
                 markdown_file: None,
             },
+            dependency: None,
         }
     };
 
-    let mut filesystem =
-        GZDoomFolderFileSystem::new(args.folder.clone(), config.archive.nice_name.clone())
+    let filesystem =
+        GZDoomFolderFileSystem::new(path.to_string(), config.archive.nice_name.clone())
             .context("couldn't load a path")?;
+
+    Ok((filesystem, config))
+}
+
+fn option_vec_to_vec<T>(v: Option<Vec<T>>) -> Vec<T> {
+    v.unwrap_or_default()
+}
+
+fn option_slice_to_slice<T>(v: Option<&[T]>) -> &[T] {
+    v.unwrap_or(&[])
+}
+
+fn collect_dependencies(
+    dependencies: &[Dependency],
+) -> anyhow::Result<Vec<(GZDoomFolderFileSystem, Config, String)>> {
+    use std::collections::HashSet;
+    fn recurse(
+        dependencies: &[Dependency],
+        ret: &mut Vec<(GZDoomFolderFileSystem, Config, String)>,
+        seen: &mut HashSet<String>,
+    ) -> anyhow::Result<()> {
+        for d in dependencies.iter() {
+            let (filesystem, config) = get_filesystem(&d.path)?;
+            if seen.contains(&config.archive.nice_name) {
+                continue;
+            }
+            seen.insert(config.archive.nice_name.to_string());
+
+            let dependencies = option_slice_to_slice(config.dependency.as_deref());
+            recurse(dependencies, ret, seen)?;
+            ret.push((filesystem, config, d.url.to_string()));
+        }
+
+        Ok(())
+    }
+
+    let mut ret = vec![];
+    recurse(dependencies, &mut ret, &mut HashSet::new())?;
+    Ok(ret)
+}
+
+fn main() -> anyhow::Result<()> {
+    use anyhow::Context;
+
+    let args = Args::parse();
+
+    let (mut filesystem, config) = get_filesystem(&args.folder)?;
 
     let summary_doc = filesystem
         .get_file("docs/summary.md")
@@ -224,10 +277,7 @@ fn main() -> anyhow::Result<()> {
     let favicon = filesystem.get_file("docs/favicon.png");
     let favicon = favicon.as_ref().map(|s| s.data());
 
-    let markdown_files: Result<Vec<_>, _> = config
-        .archive
-        .markdown_file
-        .unwrap_or_default()
+    let markdown_files: Result<Vec<_>, _> = option_vec_to_vec(config.archive.markdown_file)
         .iter()
         .map(|m| {
             let output_filename = if let Some(s) = m.filename.strip_suffix(".md") {
@@ -248,13 +298,28 @@ fn main() -> anyhow::Result<()> {
         .collect();
     let markdown_files = markdown_files?;
 
+    let depedencies = collect_dependencies(&option_vec_to_vec(config.dependency))?;
+
     let mut files = Files::default();
     let mut errs = vec![];
+
+    let (mut parsed_vec, dependency_links): (Vec<_>, Vec<_>) =
+        itertools::multiunzip(depedencies.into_iter().map(|(f, c, u)| {
+            let options = ParseFileSystemConfig {
+                root_name: &c.archive.base_file,
+            };
+            (
+                parse_filesystem_config(f, &mut files, &mut errs, &options),
+                u,
+            )
+        }));
     let options = ParseFileSystemConfig {
         root_name: &config.archive.base_file,
     };
-    let parsed = parse_filesystem_config(filesystem, &mut files, &mut errs, &options);
-    let hir = HirLowerer::new(&mut errs).lower(vec![parsed]).hir;
+    parsed_vec.push(parse_filesystem_config(
+        filesystem, &mut files, &mut errs, &options,
+    ));
+    let hir = HirLowerer::new(&mut errs).lower(parsed_vec).hir;
 
     if !errs.is_empty() {
         zscript_parser::err::sort_errs(&mut errs);
@@ -263,13 +328,16 @@ fn main() -> anyhow::Result<()> {
         anyhow::bail!("parsing errors occurred; not generating docs");
     }
 
-    let item_provider = hir.to_item_provider(&files);
+    let dependencies = structures::Dependencies { dependency_links };
+
+    let item_provider = hir.to_item_provider(&files, &dependencies);
     let docs = document::hir_to_doc_structures(
         summary_doc,
         config.archive.nice_name,
         &hir,
         &files,
         &item_provider,
+        &dependencies,
     );
     save_docs_to_folder(
         &args.output,

@@ -103,7 +103,7 @@ fn md_event_map<'a>(
                 let s = link.to_string();
                 let chain = s.split('.').map(|x| intern_name(x.trim()));
                 match item_provider.resolve(context, chain) {
-                    Some(v) => Tag::Link(ty, v.last().unwrap().1.get_href().into(), s.into()),
+                    Some(v) => Tag::Link(ty, v.last().unwrap().get_href().into(), s.into()),
                     None => Tag::Link(ty, link, title),
                 }
             }
@@ -141,7 +141,7 @@ fn broken_link_callback<'a>(
             let chain = s.split('.').map(|x| intern_name(x.trim()));
             item_provider
                 .resolve(context, chain)
-                .map(|v| (v.last().unwrap().1.get_href().into(), s.into()))
+                .map(|v| (v.last().unwrap().get_href().into(), s.into()))
         }
         _ => None,
     }
@@ -297,7 +297,7 @@ impl LinkedSectionKind {
         }
     }
 
-    fn get_href(&self) -> String {
+    fn get_kind_href(&self) -> String {
         match &self {
             LinkedSectionKind::Struct { link } => format!("/struct.{}.html", link.join(".")),
             LinkedSectionKind::Class { link } => format!("/class.{}.html", link.join(".")),
@@ -330,7 +330,9 @@ impl LinkedSection {
     }
 
     fn get_href(&self) -> String {
-        self.kind.get_href()
+        let kind_href = self.kind.get_kind_href();
+        let prefix = self.link_prefix.as_deref().unwrap_or_default();
+        format!("{}{}", prefix, kind_href)
     }
 }
 impl SourceCodeSection {
@@ -360,7 +362,54 @@ impl SourceCodeWithLinks {
             .sum()
     }
 
-    fn render(&self) -> Box<dyn FlowContent<String>> {
+    fn render_multiline_section(
+        indent: bool,
+        sections: &[&SourceCodeSection],
+    ) -> Box<dyn FlowContent<String>> {
+        let classes: SpacedSet<typed_html::types::Class> = if indent {
+            ["source_line", "indent"].try_into().unwrap()
+        } else {
+            ["source_line", "no_indent"].try_into().unwrap()
+        };
+        html!(
+            <pre class=classes><code>
+                {
+                    sections
+                    .iter()
+                    .filter(|s| !matches!(
+                        s,
+                        SourceCodeSection::NoNewlineSpacing
+                    ))
+                    .map(|s| s.render())
+                }
+            </code></pre>
+        )
+    }
+
+    fn render_singleline_section(sections: &[SourceCodeSection]) -> Box<dyn FlowContent<String>> {
+        html!(
+            <div class="source">
+                <pre class=["source_line", "no_indent"]><code>
+                    {
+                        sections
+                        .iter()
+                        .filter(|s| !matches!(
+                            s,
+                            SourceCodeSection::PotentialNewlineIndent
+                            | SourceCodeSection::PotentialNewlineOnly
+                        ))
+                        .map(|s| s.render())
+                    }
+                </code></pre>
+            </div>
+        )
+    }
+
+    fn render_with_func(
+        &self,
+        multiline_func: impl Fn(bool, &[&SourceCodeSection]) -> Box<dyn FlowContent<String>>,
+        singleline_func: impl Fn(&[SourceCodeSection]) -> Box<dyn FlowContent<String>>,
+    ) -> Box<dyn FlowContent<String>> {
         enum MultilineSection<'a> {
             NonIndented(Vec<&'a SourceCodeSection>),
             Indented(Vec<&'a SourceCodeSection>),
@@ -415,58 +464,26 @@ impl SourceCodeWithLinks {
         let multiline = length > 40;
         if multiline {
             let multiline_sections = group_multiline_sections(&self.sections);
-            fn render_multiline_section(
-                indent: bool,
-                sections: &[&SourceCodeSection],
-            ) -> Box<dyn FlowContent<String>> {
-                let classes: SpacedSet<typed_html::types::Class> = if indent {
-                    ["source_line", "indent"].try_into().unwrap()
-                } else {
-                    ["source_line", "no_indent"].try_into().unwrap()
-                };
-                html!(
-                    <pre class=classes><code>
-                        {
-                            sections
-                            .iter()
-                            .filter(|s| !matches!(
-                                s,
-                                SourceCodeSection::NoNewlineSpacing
-                            ))
-                            .map(|s| s.render())
-                        }
-                    </code></pre>
-                )
-            }
             html!(
                 <div class="source">
                 {
                     multiline_sections.into_iter().map(|m| match m {
-                        MultilineSection::NonIndented(s) => render_multiline_section(false, &s),
-                        MultilineSection::Indented(s) => render_multiline_section(true, &s),
+                        MultilineSection::NonIndented(s) => multiline_func(false, &s),
+                        MultilineSection::Indented(s) => multiline_func(true, &s),
                     })
                 }
                 </div>
             )
         } else {
-            html!(
-                <div class="source">
-                    <pre class=["source_line", "no_indent"]><code>
-                        {
-                            self
-                            .sections
-                            .iter()
-                            .filter(|s| !matches!(
-                                s,
-                                SourceCodeSection::PotentialNewlineIndent
-                                | SourceCodeSection::PotentialNewlineOnly
-                            ))
-                            .map(|s| s.render())
-                        }
-                    </code></pre>
-                </div>
-            )
+            singleline_func(&self.sections)
         }
+    }
+
+    fn render(&self) -> Box<dyn FlowContent<String>> {
+        self.render_with_func(
+            Self::render_multiline_section,
+            Self::render_singleline_section,
+        )
     }
 }
 
@@ -865,12 +882,33 @@ impl Class {
                             </h1>
                             {
                                 self.inherits.as_ref().map(|i| html!(
-                                    <h1 class="inherits">
+                                    <div class="inherits">
                                         "inherits from "
-                                        <a href={ format!("/class.{}.html", i) } class="class">
-                                            { text!(add_zws(i)) }
-                                        </a>
-                                    </h1>
+                                        {
+                                            macro_rules! func {
+                                                ($t: ty) => {
+                                                    |sections: $t| html!(
+                                                        <span>
+                                                            {
+                                                                sections
+                                                                .iter()
+                                                                .filter(|s| !matches!(
+                                                                    s,
+                                                                    SourceCodeSection::PotentialNewlineIndent
+                                                                    | SourceCodeSection::PotentialNewlineOnly
+                                                                ))
+                                                                .map(|s| s.render())
+                                                            }
+                                                        </span>
+                                                    )
+                                                }
+                                            }
+                                            i.render_with_func(
+                                                |_, s| func!(&[&_])(s),
+                                                func!(&[_])
+                                            )
+                                        }
+                                    </div>
                                 ))
                             }
                         </div>

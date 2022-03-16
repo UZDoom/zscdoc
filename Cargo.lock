@@ -1648,7 +1648,7 @@ dependencies = [
 [[package]]
 name = "zscript_parser"
 version = "0.1.0"
-source = "git+https://gitlab.com/Gutawer/zscript_parser#5e5d8ede82e6eeec244faa36c80be7d9c7196a3b"
+source = "git+https://gitlab.com/Gutawer/zscript_parser#88d39cfa0244b8694dc5a0c69996068b91dee4ed"
 dependencies = [
  "bitflags",
  "once_cell",

@@ -21,8 +21,9 @@ pub enum LinkedSectionKind {
     Flag { owner: Owner, link: String },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LinkedSection {
+    pub link_prefix: Option<String>,
     pub text: String,
     pub kind: LinkedSectionKind,
 }
@@ -100,7 +101,7 @@ pub struct Class {
     pub name: String,
     #[allow(unused)]
     pub span: Span,
-    pub inherits: Option<String>,
+    pub inherits: Option<SourceCodeWithLinks>,
     pub doc_comment: String,
     pub overrides: Vec<Function>,
     pub public: VariablesAndFunctions,
@@ -153,4 +154,19 @@ pub struct Documentation {
     pub enums: Vec<Enum>,
     pub constants: Vec<Constant>,
     pub summary_doc: String,
+}
+
+pub struct Dependencies {
+    pub dependency_links: Vec<String>,
+}
+impl Dependencies {
+    pub fn get_final_archive_num(&self) -> usize {
+        self.dependency_links.len()
+    }
+
+    pub fn get_link_prefix(&self, archive_num: usize) -> Option<String> {
+        self.dependency_links
+            .get(archive_num)
+            .map(|x| x.to_string())
+    }
 }

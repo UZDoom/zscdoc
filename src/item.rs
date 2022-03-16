@@ -7,10 +7,10 @@ use zscript_parser::{
     ir_common::{ConstDefinition, EnumDefinition},
 };
 
-use crate::structures::{LinkedSectionKind, Owner};
+use crate::structures::{Dependencies, LinkedSection, LinkedSectionKind, Owner};
 
 pub struct ItemProvider {
-    items: HashMap<Vec<NameSymbol>, (String, LinkedSectionKind)>,
+    items: HashMap<Vec<NameSymbol>, LinkedSection>,
 }
 
 impl ItemProvider {
@@ -18,20 +18,20 @@ impl ItemProvider {
         &self,
         context: &[NameSymbol],
         chain: T,
-    ) -> Option<Vec<(String, LinkedSectionKind)>> {
+    ) -> Option<Vec<&LinkedSection>> {
         let chain_clone = chain.clone();
         let mut chain = chain.into_iter();
         let start = context_with(context, chain.next().unwrap());
         let mut resolved_chain = vec![];
         match self.items.get(&start) {
             Some(i) => {
-                resolved_chain.push(i.clone());
+                resolved_chain.push(i);
                 let mut cur = start;
                 for next in chain {
                     cur = context_with(&cur, next);
                     match self.items.get(&cur) {
                         Some(i) => {
-                            resolved_chain.push(i.clone());
+                            resolved_chain.push(i);
                         }
                         None => {
                             return None;
@@ -52,14 +52,14 @@ impl ItemProvider {
 }
 
 pub trait ToItemProvider {
-    fn to_item_provider(&self, files: &Files) -> ItemProvider;
+    fn to_item_provider(&self, files: &Files, dependencies: &Dependencies) -> ItemProvider;
 }
 impl ToItemProvider for TopLevel {
-    fn to_item_provider(&self, files: &Files) -> ItemProvider {
+    fn to_item_provider(&self, files: &Files, dependencies: &Dependencies) -> ItemProvider {
         let mut ret = ItemProvider {
             items: HashMap::new(),
         };
-        self.add(&[], &mut ret, files, &Owner::Global);
+        self.add(&[], &mut ret, files, &Owner::Global, dependencies, 0);
         ret
     }
 }
@@ -88,6 +88,8 @@ trait AddToItemProvider {
         item_provider: &mut ItemProvider,
         files: &Files,
         owner: &Owner,
+        dependencies: &Dependencies,
+        archive_num: usize,
     );
 }
 impl AddToItemProvider for TopLevel {
@@ -97,21 +99,52 @@ impl AddToItemProvider for TopLevel {
         item_provider: &mut ItemProvider,
         files: &Files,
         _owner: &Owner,
+        dependencies: &Dependencies,
+        _archive_num: usize,
     ) {
         for (_, d) in self.definitions.iter() {
             let def = &d[0];
+            let archive_num = def.archive_num;
             match &def.kind {
                 zscript_parser::hir::TopLevelDefinitionKind::Class(c) => {
-                    c.add(context, item_provider, files, &Owner::Global);
+                    c.add(
+                        context,
+                        item_provider,
+                        files,
+                        &Owner::Global,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 zscript_parser::hir::TopLevelDefinitionKind::Struct(s) => {
-                    s.add(context, item_provider, files, &Owner::Global);
+                    s.add(
+                        context,
+                        item_provider,
+                        files,
+                        &Owner::Global,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 zscript_parser::hir::TopLevelDefinitionKind::Enum(e) => {
-                    e.add(context, item_provider, files, &Owner::Global);
+                    e.add(
+                        context,
+                        item_provider,
+                        files,
+                        &Owner::Global,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 zscript_parser::hir::TopLevelDefinitionKind::Const(c) => {
-                    c.add(context, item_provider, files, &Owner::Global);
+                    c.add(
+                        context,
+                        item_provider,
+                        files,
+                        &Owner::Global,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 zscript_parser::hir::TopLevelDefinitionKind::MixinClass(_) => {}
             }
@@ -126,34 +159,83 @@ impl AddToItemProvider for ClassDefinition {
         item_provider: &mut ItemProvider,
         files: &Files,
         owner: &Owner,
+        dependencies: &Dependencies,
+        archive_num: usize,
     ) {
         let context = context_with(context, self.name.symbol);
         let name = files.text_from_span(self.name.span).to_string();
         let link = owner_and(owner, name.clone());
         let owner = Owner::Class(link.clone());
-        item_provider
-            .items
-            .insert(context.clone(), (name, LinkedSectionKind::Class { link }));
+        item_provider.items.insert(
+            context.clone(),
+            LinkedSection {
+                link_prefix: dependencies.get_link_prefix(archive_num),
+                text: name,
+                kind: LinkedSectionKind::Class { link },
+            },
+        );
         for (_, d) in self.inners.iter() {
             let def = &d[0];
             match &def.kind {
                 ClassInnerKind::FunctionDeclaration(f) => {
-                    f.add(&context, item_provider, files, &owner);
+                    f.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 ClassInnerKind::MemberDeclaration(m) => {
-                    m.add(&context, item_provider, files, &owner);
+                    m.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 ClassInnerKind::Enum(e) => {
-                    e.add(&context, item_provider, files, &owner);
+                    e.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 ClassInnerKind::Struct(s) => {
-                    s.add(&context, item_provider, files, &owner);
+                    s.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 ClassInnerKind::Const(co) => {
-                    co.add(&context, item_provider, files, &owner);
+                    co.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 ClassInnerKind::StaticConstArray(sca) => {
-                    sca.add(&context, item_provider, files, &owner);
+                    sca.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 ClassInnerKind::Property(_) => { /* TODO */ }
                 ClassInnerKind::Flag(_) => { /* TODO */ }
@@ -169,31 +251,73 @@ impl AddToItemProvider for StructDefinition {
         item_provider: &mut ItemProvider,
         files: &Files,
         owner: &Owner,
+        dependencies: &Dependencies,
+        archive_num: usize,
     ) {
         let context = context_with(context, self.name.symbol);
         let name = files.text_from_span(self.name.span).to_string();
         let link = owner_and(owner, name.clone());
         let owner = Owner::Struct(link.clone());
-        item_provider
-            .items
-            .insert(context.clone(), (name, LinkedSectionKind::Struct { link }));
+        item_provider.items.insert(
+            context.clone(),
+            LinkedSection {
+                link_prefix: dependencies.get_link_prefix(archive_num),
+                text: name,
+                kind: LinkedSectionKind::Struct { link },
+            },
+        );
         for (_, d) in self.inners.iter() {
             let def = &d[0];
             match &def.kind {
                 StructInnerKind::FunctionDeclaration(f) => {
-                    f.add(&context, item_provider, files, &owner);
+                    f.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 StructInnerKind::MemberDeclaration(m) => {
-                    m.add(&context, item_provider, files, &owner);
+                    m.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 StructInnerKind::Enum(e) => {
-                    e.add(&context, item_provider, files, &owner);
+                    e.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 StructInnerKind::Const(co) => {
-                    co.add(&context, item_provider, files, &owner);
+                    co.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
                 StructInnerKind::StaticConstArray(sca) => {
-                    sca.add(&context, item_provider, files, &owner);
+                    sca.add(
+                        &context,
+                        item_provider,
+                        files,
+                        &owner,
+                        dependencies,
+                        archive_num,
+                    );
                 }
             }
         }
@@ -207,25 +331,33 @@ impl AddToItemProvider for EnumDefinition {
         item_provider: &mut ItemProvider,
         files: &Files,
         owner: &Owner,
+        dependencies: &Dependencies,
+        archive_num: usize,
     ) {
         let enum_context = context_with(context, self.name.symbol);
         let name = files.text_from_span(self.name.span).to_string();
         let link = owner_and(owner, name.clone());
         let owner = Owner::Enum(link.clone());
-        item_provider
-            .items
-            .insert(enum_context, (name, LinkedSectionKind::Enum { link }));
+        item_provider.items.insert(
+            enum_context,
+            LinkedSection {
+                link_prefix: dependencies.get_link_prefix(archive_num),
+                text: name,
+                kind: LinkedSectionKind::Enum { link },
+            },
+        );
         for v in self.variants.iter() {
             let name = files.text_from_span(v.name.span).to_string();
             item_provider.items.insert(
                 context_with(context, v.name.symbol),
-                (
-                    name.clone(),
-                    LinkedSectionKind::Enumerator {
+                LinkedSection {
+                    link_prefix: dependencies.get_link_prefix(archive_num),
+                    text: name.clone(),
+                    kind: LinkedSectionKind::Enumerator {
                         owner: owner.clone(),
                         link: name,
                     },
-                ),
+                },
             );
         }
     }
@@ -238,18 +370,21 @@ impl AddToItemProvider for ConstDefinition {
         item_provider: &mut ItemProvider,
         files: &Files,
         owner: &Owner,
+        dependencies: &Dependencies,
+        archive_num: usize,
     ) {
         let context = context_with(context, self.name.symbol);
         let name = files.text_from_span(self.name.span).to_string();
         item_provider.items.insert(
             context,
-            (
-                name.to_string(),
-                LinkedSectionKind::Constant {
+            LinkedSection {
+                link_prefix: dependencies.get_link_prefix(archive_num),
+                text: name.to_string(),
+                kind: LinkedSectionKind::Constant {
                     owner: owner.clone(),
                     link: name,
                 },
-            ),
+            },
         );
     }
 }
@@ -261,18 +396,21 @@ impl AddToItemProvider for FunctionDeclaration {
         item_provider: &mut ItemProvider,
         files: &Files,
         owner: &Owner,
+        dependencies: &Dependencies,
+        archive_num: usize,
     ) {
         let context = context_with(context, self.name.symbol);
         let name = files.text_from_span(self.name.span).to_string();
         item_provider.items.insert(
             context,
-            (
-                name.to_string(),
-                LinkedSectionKind::Function {
+            LinkedSection {
+                link_prefix: dependencies.get_link_prefix(archive_num),
+                text: name.to_string(),
+                kind: LinkedSectionKind::Function {
                     owner: owner.clone(),
                     link: name,
                 },
-            ),
+            },
         );
     }
 }
@@ -284,18 +422,21 @@ impl AddToItemProvider for MemberDeclaration {
         item_provider: &mut ItemProvider,
         files: &Files,
         owner: &Owner,
+        dependencies: &Dependencies,
+        archive_num: usize,
     ) {
         let context = context_with(context, self.name.symbol);
         let name = files.text_from_span(self.name.span).to_string();
         item_provider.items.insert(
             context,
-            (
-                name.to_string(),
-                LinkedSectionKind::Member {
+            LinkedSection {
+                link_prefix: dependencies.get_link_prefix(archive_num),
+                text: name.to_string(),
+                kind: LinkedSectionKind::Member {
                     owner: owner.clone(),
                     link: name,
                 },
-            ),
+            },
         );
     }
 }
@@ -307,18 +448,21 @@ impl AddToItemProvider for StaticConstArray {
         item_provider: &mut ItemProvider,
         files: &Files,
         owner: &Owner,
+        dependencies: &Dependencies,
+        archive_num: usize,
     ) {
         let context = context_with(context, self.name.symbol);
         let name = files.text_from_span(self.name.span).to_string();
         item_provider.items.insert(
             context,
-            (
-                name.to_string(),
-                LinkedSectionKind::Constant {
+            LinkedSection {
+                link_prefix: dependencies.get_link_prefix(archive_num),
+                text: name.to_string(),
+                kind: LinkedSectionKind::Constant {
                     owner: owner.clone(),
                     link: name,
                 },
-            ),
+            },
         );
     }
 }

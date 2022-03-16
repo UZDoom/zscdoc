@@ -5,3 +5,7 @@ base_file = "zforms/include"
 [[archive.markdown_file]]
 filename = "test.md"
 title = "test"
+
+[[dependency]]
+path = "test_data/gzdoom_pk3"
+url = "http://localhost:8081"
