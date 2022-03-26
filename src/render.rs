@@ -277,6 +277,7 @@ impl Owner {
             Self::Class(v) => format!("class.{}.html", v.join(".")),
             Self::Struct(v) => format!("struct.{}.html", v.join(".")),
             Self::Enum(v) => format!("enum.{}.html", v.join(".")),
+            Self::Builtin(s) => format!("builtin.{}.html", s),
             Self::Global => "index.html".to_string(),
         }
     }
@@ -288,6 +289,7 @@ impl LinkedSectionKind {
             LinkedSectionKind::Struct { .. } => "struct",
             LinkedSectionKind::Class { .. } => "class",
             LinkedSectionKind::Enum { .. } => "enum",
+            LinkedSectionKind::Builtin { .. } => "builtin",
             LinkedSectionKind::Function { .. } => "function",
             LinkedSectionKind::Member { .. } => "member",
             LinkedSectionKind::Enumerator { .. } => "constant",
@@ -302,6 +304,7 @@ impl LinkedSectionKind {
             LinkedSectionKind::Struct { link } => format!("/struct.{}.html", link.join(".")),
             LinkedSectionKind::Class { link } => format!("/class.{}.html", link.join(".")),
             LinkedSectionKind::Enum { link } => format!("/enum.{}.html", link.join(".")),
+            LinkedSectionKind::Builtin { link } => format!("/builtin.{}.html", link),
             LinkedSectionKind::Function { owner, link } => {
                 format!("/{}#function.{}", owner.get_href_prelude(), link)
             }
@@ -1063,6 +1066,86 @@ impl Struct {
     }
 }
 
+impl Builtin {
+    pub fn render(&self, docs_name: &str, item_provider: &ItemProvider) -> DOMTree<String> {
+        let sections =
+            sidebar_sections_from_slice("Constants", "#constants", &self.constants, |v| {
+                SidebarSection::Text {
+                    text: v.name.clone(),
+                    link: format!("#constant.{}", v.name),
+                }
+            })
+            .chain(sidebar_sections_from_slice(
+                "Functions",
+                "functions",
+                &self.functions,
+                |v| SidebarSection::Text {
+                    text: v.name.clone(),
+                    link: format!("#function.{}", v.name),
+                },
+            ))
+            .chain(sidebar_sections_from_slice(
+                "Member Variables",
+                "members",
+                &self.variables,
+                |v| SidebarSection::Text {
+                    text: v.name.clone(),
+                    link: format!("#member.{}", v.name),
+                },
+            ))
+            .collect_vec();
+        let sidebar_data = SidebarData {
+            docs_name: docs_name.to_string(),
+            title: format!("Builtin {}", self.name),
+            sections,
+        };
+        let docs_id = format!("builtin.{}.docs", self.name);
+        render_html_boilerplate(
+            &format!("Builtin {} - {}", self.name, docs_name),
+            html!(
+                <div>
+                    <div class="doc_row">
+                        <div class="doc_main">
+                            <h1 class="main_heading">
+                                "Builtin "
+                                <a href={ format!("/builtin.{}.html", self.name) } class="builtin">
+                                    { text!(add_zws(&self.name)) }
+                                </a>
+                            </h1>
+                        </div>
+                        { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
+                    </div>
+                    <hr/>
+                    { render_doc_comment(&self.doc_comment, true, &docs_id, item_provider, &self.context) }
+                    {
+                        render_section_from_slice(
+                            "Constants", "constants", "", &self.constants, false,
+                            |v| {
+                                v.render(item_provider)
+                            }
+                        ).chain(
+                            render_section_from_slice(
+                                "Functions", "functions", "", &self.functions, false,
+                                |v| {
+                                    v.render(item_provider)
+                                }
+                            )
+                        ).chain(
+                            render_section_from_slice(
+                                "Member Variables", "members", "", &self.variables, false,
+                                |v| {
+                                    v.render(item_provider)
+                                }
+                            )
+                        )
+                    }
+                </div>
+            ),
+            sidebar_data,
+        )
+    }
+}
+
 impl Enumerator {
     fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("enumerator.{}.docs", self.name);
@@ -1137,6 +1220,12 @@ impl Documentation {
                 link: "#constants".to_string(),
             });
         }
+        if !self.enums.is_empty() {
+            sections.push(SidebarSection::Text {
+                text: "Builtin Types".to_string(),
+                link: "#builtins".to_string(),
+            });
+        }
         if !self.classes.is_empty() {
             sections.push(SidebarSection::Text {
                 text: "Classes".to_string(),
@@ -1182,6 +1271,18 @@ impl Documentation {
                             |v| {
                                 v.render(item_provider)
                             }
+                        )
+                    }
+                    {
+                        render_summary_grid(
+                            "Builtin Types",
+                            "builtins",
+                            "builtin",
+                            &self.builtins.iter().map(|c| SummaryGridRow {
+                                name: c.name.clone(),
+                                link: format!("/builtin.{}.html", c.name),
+                                doc_comment: c.doc_comment.clone()
+                            }).collect_vec()
                         )
                     }
                     {

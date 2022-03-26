@@ -6,6 +6,7 @@ type SearchResultKind =
     | "Class"
     | "Struct"
     | "Enum"
+    | "Builtin"
     | "Function"
     | "Member"
     | "Constant"
@@ -47,6 +48,7 @@ function search(
                     Class: 0.1,
                     Struct: 0.1,
                     Enum: 0.1,
+                    Builtin: 0.1,
                     Function: 0,
                     Member: 0,
                     Constant: 0,
@@ -103,6 +105,7 @@ function render_search_results(results: Fuzzysort.KeysResults<SearchResult>) {
                                                 Class: "class",
                                                 Struct: "struct",
                                                 Enum: "enum",
+                                                Builtin: "builtin",
                                                 Function: "function",
                                                 Member: "member",
                                                 Constant: "constant",

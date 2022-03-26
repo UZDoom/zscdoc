@@ -3,12 +3,16 @@ use std::collections::HashMap;
 use zscript_parser::{
     filesystem::Files,
     hir::*,
-    interner::NameSymbol,
+    interner::{intern_name, NameSymbol},
     ir_common::{ConstDefinition, EnumDefinition},
 };
 
-use crate::structures::{Dependencies, LinkedSection, LinkedSectionKind, Owner};
+use crate::{
+    builtin::BuiltinTypeHir,
+    structures::{Dependencies, LinkedSection, LinkedSectionKind, Owner},
+};
 
+#[derive(Debug)]
 pub struct ItemProvider {
     items: HashMap<Vec<NameSymbol>, LinkedSection>,
 }
@@ -49,6 +53,62 @@ impl ItemProvider {
         }
         Some(resolved_chain)
     }
+
+    pub fn add_builtins<'i, OI, II>(
+        &mut self,
+        builtins: OI,
+        files: &Files,
+        dependencies: &Dependencies,
+    ) where
+        OI: IntoIterator<Item = II>,
+        II: IntoIterator<Item = &'i BuiltinTypeHir>,
+    {
+        for (i, bs) in builtins.into_iter().enumerate() {
+            for b in bs.into_iter() {
+                let context = vec![intern_name(&b.name)];
+                let name = b.name.clone();
+                let owner = Owner::Builtin(name.clone());
+                self.items.insert(
+                    context.clone(),
+                    LinkedSection {
+                        link_prefix: dependencies.get_link_prefix(i),
+                        text: name.clone(),
+                        kind: LinkedSectionKind::Builtin { link: name },
+                    },
+                );
+                for m in b.members.iter() {
+                    let context = context_with(&context, m.def.name.symbol);
+                    let name = files.text_from_span(m.def.name.span).to_string();
+                    self.items.insert(
+                        context.clone(),
+                        LinkedSection {
+                            link_prefix: dependencies.get_link_prefix(i),
+                            text: name.clone(),
+                            kind: LinkedSectionKind::Member {
+                                owner: owner.clone(),
+                                link: name,
+                            },
+                        },
+                    );
+                }
+                for f in b.functions.iter() {
+                    let context = context_with(&context, f.def.name.symbol);
+                    let name = files.text_from_span(f.def.name.span).to_string();
+                    self.items.insert(
+                        context.clone(),
+                        LinkedSection {
+                            link_prefix: dependencies.get_link_prefix(i),
+                            text: name.clone(),
+                            kind: LinkedSectionKind::Function {
+                                owner: owner.clone(),
+                                link: name,
+                            },
+                        },
+                    );
+                }
+            }
+        }
+    }
 }
 
 pub trait ToItemProvider {
@@ -75,6 +135,7 @@ fn owner_and(owner: &Owner, and: String) -> Vec<String> {
         Owner::Class(v) => v.clone(),
         Owner::Struct(v) => v.clone(),
         Owner::Enum(v) => v.clone(),
+        Owner::Builtin(s) => vec![s.clone()],
         Owner::Global => vec![],
     };
     base.push(and);

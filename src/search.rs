@@ -8,6 +8,7 @@ pub enum SearchResultKind {
     Class,
     Struct,
     Enum,
+    Builtin,
     Function,
     Member,
     Constant,
@@ -127,6 +128,52 @@ fn collect_struct(s: &Struct, res: &mut SearchResults) {
     }
 }
 
+fn collect_builtin(b: &Builtin, res: &mut SearchResults) {
+    let split = b.name.split('.').collect_vec();
+    let (last, prelude) = split.split_last().unwrap();
+    let name_prelude = if prelude.is_empty() {
+        "".to_string()
+    } else {
+        format!("{}.", prelude.join("."))
+    };
+    let name = last.to_string();
+
+    res.results.push(SearchResult {
+        name_prelude,
+        name,
+        link: format!("builtin.{}.html", b.name),
+        desc: summarize(&b.doc_comment),
+        kind: SearchResultKind::Builtin,
+    });
+    for co in b.constants.iter() {
+        res.results.push(SearchResult {
+            name_prelude: format!("{}.", b.name),
+            name: co.name.to_string(),
+            link: format!("builtin.{}.html#constant.{}", b.name, co.name),
+            desc: summarize(&co.doc_comment),
+            kind: SearchResultKind::Constant,
+        });
+    }
+    for f in b.functions.iter() {
+        res.results.push(SearchResult {
+            name_prelude: format!("{}.", b.name),
+            name: f.name.to_string(),
+            link: format!("builtin.{}.html#function.{}", b.name, b.name),
+            desc: summarize(&f.doc_comment),
+            kind: SearchResultKind::Function,
+        });
+    }
+    for m in b.variables.iter() {
+        res.results.push(SearchResult {
+            name_prelude: format!("{}.", b.name),
+            name: m.name.to_string(),
+            link: format!("builtin.{}.html#member.{}", b.name, m.name),
+            desc: summarize(&m.doc_comment),
+            kind: SearchResultKind::Member,
+        });
+    }
+}
+
 fn collect_enum(e: &Enum, res: &mut SearchResults) {
     let split = e.name.split('.').collect_vec();
     let (last, prelude) = split.split_last().unwrap();
@@ -174,6 +221,9 @@ pub fn collect_search_results(docs: &Documentation) -> SearchResults {
     }
     for e in docs.enums.iter() {
         collect_enum(e, &mut res);
+    }
+    for b in docs.builtins.iter() {
+        collect_builtin(b, &mut res);
     }
     res
 }

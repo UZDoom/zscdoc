@@ -5,6 +5,7 @@ pub enum Owner {
     Class(Vec<String>),
     Struct(Vec<String>),
     Enum(Vec<String>),
+    Builtin(String),
     Global,
 }
 
@@ -13,6 +14,7 @@ pub enum LinkedSectionKind {
     Struct { link: Vec<String> },
     Class { link: Vec<String> },
     Enum { link: Vec<String> },
+    Builtin { link: String },
     Function { owner: Owner, link: String },
     Member { owner: Owner, link: String },
     Enumerator { owner: Owner, link: String },
@@ -28,7 +30,7 @@ pub struct LinkedSection {
     pub kind: LinkedSectionKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SourceCodeSection {
     NoLink(String),
     Linked(LinkedSection),
@@ -37,16 +39,18 @@ pub enum SourceCodeSection {
     NoNewlineSpacing,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SourceCodeWithLinks {
     pub sections: Vec<SourceCodeSection>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Deprecated {
     pub version: String,
     pub reason: String,
 }
 
+#[derive(Debug, Clone)]
 pub struct MemberVariable {
     pub context: Vec<NameSymbol>,
     pub doc_comment: String,
@@ -56,6 +60,7 @@ pub struct MemberVariable {
     pub deprecated: Option<Deprecated>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Function {
     pub context: Vec<NameSymbol>,
     pub name: String,
@@ -66,6 +71,7 @@ pub struct Function {
     pub deprecated: Option<Deprecated>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Property {
     pub context: Vec<NameSymbol>,
     pub name: String,
@@ -74,6 +80,7 @@ pub struct Property {
     pub def: SourceCodeWithLinks,
 }
 
+#[derive(Debug, Clone)]
 pub struct Flag {
     pub context: Vec<NameSymbol>,
     pub name: String,
@@ -82,6 +89,7 @@ pub struct Flag {
     pub def: SourceCodeWithLinks,
 }
 
+#[derive(Debug, Clone)]
 pub struct Constant {
     pub context: Vec<NameSymbol>,
     pub doc_comment: String,
@@ -90,12 +98,13 @@ pub struct Constant {
     pub def: SourceCodeWithLinks,
 }
 
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct VariablesAndFunctions {
     pub variables: Vec<MemberVariable>,
     pub functions: Vec<Function>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Class {
     pub context: Vec<NameSymbol>,
     pub name: String,
@@ -114,6 +123,7 @@ pub struct Class {
     pub flags: Vec<Flag>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Struct {
     pub context: Vec<NameSymbol>,
     pub name: String,
@@ -128,6 +138,7 @@ pub struct Struct {
     pub constants: Vec<Constant>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Enumerator {
     pub context: Vec<NameSymbol>,
     pub name: String,
@@ -137,6 +148,7 @@ pub struct Enumerator {
     pub decl: SourceCodeWithLinks,
 }
 
+#[derive(Debug, Clone)]
 pub struct Enum {
     pub context: Vec<NameSymbol>,
     pub name: String,
@@ -147,17 +159,32 @@ pub struct Enum {
     pub enumerators: Vec<Enumerator>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Builtin {
+    pub context: Vec<NameSymbol>,
+    pub name: String,
+    pub doc_comment: String,
+    pub variables: Vec<MemberVariable>,
+    pub functions: Vec<Function>,
+    pub constants: Vec<Constant>,
+}
+
 pub struct Documentation {
     pub name: String,
     pub classes: Vec<Class>,
     pub structs: Vec<Struct>,
     pub enums: Vec<Enum>,
+    pub builtins: Vec<Builtin>,
     pub constants: Vec<Constant>,
     pub summary_doc: String,
 }
 
+pub struct Dependency {
+    pub link: String,
+}
+
 pub struct Dependencies {
-    pub dependency_links: Vec<String>,
+    pub dependency_links: Vec<Dependency>,
 }
 impl Dependencies {
     pub fn get_final_archive_num(&self) -> usize {
@@ -167,6 +194,6 @@ impl Dependencies {
     pub fn get_link_prefix(&self, archive_num: usize) -> Option<String> {
         self.dependency_links
             .get(archive_num)
-            .map(|x| x.to_string())
+            .map(|x| x.link.clone())
     }
 }

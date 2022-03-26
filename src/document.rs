@@ -254,7 +254,7 @@ fn add_type_to_source(
     }
 }
 
-fn reconstruct_function_signature(
+pub fn reconstruct_function_signature(
     owner: Owner,
     func: &hir::FunctionDeclaration,
     item_provider: &ItemProvider,
@@ -370,7 +370,7 @@ fn member_flag_to_string(flag: hir::MemberFlags) -> &'static str {
     }
 }
 
-fn reconstruct_member_declaration(
+pub fn reconstruct_member_declaration(
     owner: Owner,
     member: &hir::MemberDeclaration,
     item_provider: &ItemProvider,
@@ -414,7 +414,7 @@ fn reconstruct_enumerator_declaration(
     ret
 }
 
-fn reconstruct_constant_declaration(
+pub fn reconstruct_constant_declaration(
     owner: Owner,
     constant: &ir_common::ConstDefinition,
     _item_provider: &ItemProvider,
@@ -521,7 +521,7 @@ fn reconstruct_flagdef(
     ret
 }
 
-fn transform_deprecated(d: &hir::Deprecated) -> Deprecated {
+pub fn transform_deprecated(d: &hir::Deprecated) -> Deprecated {
     Deprecated {
         version: format!(
             "{}.{}.{}",
@@ -1026,6 +1026,7 @@ pub fn hir_to_doc_structures(
     files: &Files,
     item_provider: &ItemProvider,
     dependencies: &Dependencies,
+    builtins: Vec<Builtin>,
 ) -> Documentation {
     let mut docs = Documentation {
         name: nice_name,
@@ -1033,6 +1034,7 @@ pub fn hir_to_doc_structures(
         structs: vec![],
         enums: vec![],
         constants: vec![],
+        builtins,
         summary_doc,
     };
     for (_, node) in hir.definitions.iter() {

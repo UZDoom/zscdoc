@@ -3,14 +3,17 @@
 mod item;
 mod structures;
 
+mod builtin;
 mod document;
 mod render;
 mod search;
 
-use crate::{item::ItemProvider, render::render_from_markdown};
+use crate::{builtin::BuiltinTypeFromFile, item::ItemProvider, render::render_from_markdown};
 use clap::Parser;
+use itertools::Itertools;
 use zscript_parser::{
-    filesystem::{FileSystem, Files, GZDoomFolderFileSystem},
+    err::ToDisplayedErrors,
+    filesystem::{File, FileSystem, Files, GZDoomFolderFileSystem},
     hir::lower::HirLowerer,
     parser_manager::{parse_filesystem_config, ParseFileSystemConfig},
 };
@@ -63,7 +66,10 @@ struct Archive {
     nice_name: String,
     #[serde(default = "base_file_default")]
     base_file: String,
-    markdown_file: Option<Vec<MarkdownFile>>,
+    #[serde(alias = "markdown_file")]
+    markdown_files: Option<Vec<MarkdownFile>>,
+    #[serde(alias = "builtin")]
+    builtins: Option<Vec<String>>,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -181,6 +187,16 @@ fn save_docs_to_folder(
             format!("<!DOCTYPE html>{}", enm.render(&docs.name, item_provider)).as_bytes(),
         )?;
     }
+    for builtin in docs.builtins.iter() {
+        let mut file = File::create(path.join(format!("builtin.{}.html", builtin.name)))?;
+        file.write_all(
+            format!(
+                "<!DOCTYPE html>{}",
+                builtin.render(&docs.name, item_provider)
+            )
+            .as_bytes(),
+        )?;
+    }
     {
         let mut file = File::create(path.join("search.json"))?;
         file.write_all(
@@ -196,7 +212,7 @@ fn save_docs_to_folder(
     Ok(())
 }
 
-fn get_filesystem(path: &str) -> anyhow::Result<(GZDoomFolderFileSystem, Config)> {
+fn get_filesystem(path: &str) -> anyhow::Result<(GZDoomFolderFileSystem, Config, Vec<File>)> {
     use anyhow::Context;
 
     let mut filesystem = GZDoomFolderFileSystem::new(path.to_string(), path.to_string())
@@ -209,33 +225,65 @@ fn get_filesystem(path: &str) -> anyhow::Result<(GZDoomFolderFileSystem, Config)
 
     let config: Config = toml::from_str(config_file).context("config file parsing failed")?;
 
-    let filesystem =
+    let mut filesystem =
         GZDoomFolderFileSystem::new(path.to_string(), config.archive.nice_name.clone())
             .context("couldn't load a path")?;
 
-    Ok((filesystem, config))
+    let builtin_files: Result<Vec<_>, anyhow::Error> =
+        option_slice_to_slice(config.archive.builtins.as_deref())
+            .iter()
+            .map(|s| {
+                let filename_to_get = format!("docs/{}", s);
+                let file = filesystem
+                    .get_file(&filename_to_get)
+                    .context(format!("file {:?} didn't exist", filename_to_get))?;
+                Ok(file)
+            })
+            .collect();
+    let builtin_files = builtin_files?;
+
+    Ok((filesystem, config, builtin_files))
 }
 
-fn option_vec_to_vec<T>(v: Option<Vec<T>>) -> Vec<T> {
+pub fn option_vec_to_vec<T>(v: Option<Vec<T>>) -> Vec<T> {
     v.unwrap_or_default()
 }
 
-fn option_slice_to_slice<T>(v: Option<&[T]>) -> &[T] {
+pub fn option_slice_to_slice<T>(v: Option<&[T]>) -> &[T] {
     v.unwrap_or(&[])
 }
 
-fn collect_dependencies(
-    dependencies: &[Dependency],
-) -> anyhow::Result<Vec<(GZDoomFolderFileSystem, Config, String)>> {
+fn get_builtins(files: &[File]) -> anyhow::Result<impl Iterator<Item = BuiltinTypeFromFile> + '_> {
+    use anyhow::Context;
+
+    let r: anyhow::Result<Vec<_>> = files
+        .iter()
+        .map(|f| {
+            let builtin: BuiltinTypeFromFile =
+                toml::from_str(f.text()).context("builtin file parsing failed")?;
+            Ok(builtin)
+        })
+        .collect();
+    r.map(|r| r.into_iter())
+}
+
+struct CollectedDependency {
+    filesystem: GZDoomFolderFileSystem,
+    config: Config,
+    url: String,
+    builtins: Vec<BuiltinTypeFromFile>,
+}
+
+fn collect_dependencies(dependencies: &[Dependency]) -> anyhow::Result<Vec<CollectedDependency>> {
     use anyhow::Context;
     use std::collections::HashSet;
     fn recurse(
         dependencies: &[Dependency],
-        ret: &mut Vec<(GZDoomFolderFileSystem, Config, String)>,
+        ret: &mut Vec<CollectedDependency>,
         seen: &mut HashSet<String>,
     ) -> anyhow::Result<()> {
         for d in dependencies.iter() {
-            let (filesystem, config) =
+            let (filesystem, config, builtin_files) =
                 get_filesystem(&d.path).context(format!("loading dependency {}", d.path))?;
             if seen.contains(&config.archive.nice_name) {
                 continue;
@@ -244,7 +292,13 @@ fn collect_dependencies(
 
             let dependencies = option_slice_to_slice(config.dependency.as_deref());
             recurse(dependencies, ret, seen)?;
-            ret.push((filesystem, config, d.url.to_string()));
+            let builtins = get_builtins(&builtin_files)?.collect_vec();
+            ret.push(CollectedDependency {
+                filesystem,
+                config,
+                url: d.url.to_string(),
+                builtins,
+            });
         }
 
         Ok(())
@@ -260,7 +314,10 @@ fn main() -> anyhow::Result<()> {
 
     let args = Args::parse();
 
-    let (mut filesystem, config) = get_filesystem(&args.folder).context("loading main archive")?;
+    let mut files = Files::default();
+
+    let (mut filesystem, config, builtin_files) =
+        get_filesystem(&args.folder).context("loading main archive")?;
 
     let summary_doc = filesystem
         .get_file("docs/summary.md")
@@ -270,7 +327,7 @@ fn main() -> anyhow::Result<()> {
     let favicon = filesystem.get_file("docs/favicon.png");
     let favicon = favicon.as_ref().map(|s| s.data());
 
-    let markdown_files: Result<Vec<_>, _> = option_vec_to_vec(config.archive.markdown_file)
+    let markdown_files: Result<Vec<_>, _> = option_vec_to_vec(config.archive.markdown_files)
         .iter()
         .map(|m| {
             let output_filename = if let Some(s) = m.filename.strip_suffix(".md") {
@@ -293,19 +350,28 @@ fn main() -> anyhow::Result<()> {
 
     let depedencies = collect_dependencies(&option_vec_to_vec(config.dependency))?;
 
-    let mut files = Files::default();
     let mut errs = vec![];
 
-    let (mut parsed_vec, dependency_links): (Vec<_>, Vec<_>) =
-        itertools::multiunzip(depedencies.into_iter().map(|(f, c, u)| {
+    let (mut parsed_vec, dependency_links, mut builtins): (Vec<_>, Vec<_>, Vec<_>) =
+        itertools::multiunzip(depedencies.into_iter().map(|d| {
+            let CollectedDependency {
+                filesystem,
+                config,
+                url,
+                builtins,
+            } = d;
             let options = ParseFileSystemConfig {
-                root_name: &c.archive.base_file,
+                root_name: &config.archive.base_file,
             };
             (
-                parse_filesystem_config(f, &mut files, &mut errs, &options),
-                u,
+                parse_filesystem_config(filesystem, &mut files, &mut errs, &options),
+                crate::structures::Dependency { link: url },
+                builtins,
             )
         }));
+    builtins.push(get_builtins(&builtin_files)?.collect_vec());
+    let builtins = builtins;
+
     let options = ParseFileSystemConfig {
         root_name: &config.archive.base_file,
     };
@@ -315,15 +381,40 @@ fn main() -> anyhow::Result<()> {
     let hir = HirLowerer::new(&mut errs).lower(parsed_vec).hir;
 
     if !errs.is_empty() {
-        zscript_parser::err::sort_errs(&mut errs);
-        let errs_str = zscript_parser::err::repr_errs(&files, &errs);
-        eprintln!("{}", errs_str);
-        anyhow::bail!("parsing errors occurred; not generating docs");
+        return Err(anyhow::anyhow!(errs.to_displayed_errors(&files)))
+            .context("failed to parse ZScript source");
     }
 
     let dependencies = structures::Dependencies { dependency_links };
 
-    let item_provider = hir.to_item_provider(&files, &dependencies);
+    let mut item_provider = hir.to_item_provider(&files, &dependencies);
+
+    let mut builtins = builtins
+        .into_iter()
+        .map(|b| {
+            b.into_iter()
+                .map(|b| b.produce(&mut files))
+                .collect::<Result<Vec<_>, _>>()
+        })
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|x| x.to_displayed_errors(&files))?;
+
+    for b in builtins.iter_mut() {
+        for b in b.iter_mut() {
+            b.extend_with_uses_things_from(&hir)?;
+        }
+    }
+
+    item_provider.add_builtins(&builtins, &files, &dependencies);
+    let item_provider = item_provider;
+
+    let builtins = builtins
+        .pop()
+        .unwrap()
+        .into_iter()
+        .map(|b| b.produce(&mut files, &item_provider))
+        .collect_vec();
+
     let docs = document::hir_to_doc_structures(
         summary_doc,
         config.archive.nice_name,
@@ -331,6 +422,7 @@ fn main() -> anyhow::Result<()> {
         &files,
         &item_provider,
         &dependencies,
+        builtins,
     );
     save_docs_to_folder(
         &args.output,

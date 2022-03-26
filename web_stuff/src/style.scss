@@ -19,6 +19,7 @@ $fg: #1c1c1c;
 $link_fg: #4d76ae;
 $class_fg: #ad448e;
 $struct_fg: #2c8093;
+$builtin_fg: #962300;
 $enum_fg: #508157;
 $function_fg: #9a6e31;
 $member_fg: #9c38ff;
@@ -61,6 +62,9 @@ span {
 }
 .enum {
   color: $enum_fg;
+}
+.builtin {
+  color: $builtin_fg;
 }
 .function {
   color: $function_fg;
