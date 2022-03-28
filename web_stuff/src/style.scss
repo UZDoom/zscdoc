@@ -208,7 +208,7 @@ body {
   justify-content: center;
 
   &, * {
-    word-wrap: normal;
+    overflow-wrap: normal;
     white-space: nowrap;
     overflow-x: hidden;
     text-overflow: ellipsis;
@@ -294,7 +294,7 @@ a.sidebar_header:hover {
   padding-left: 25px;
   padding-right: 25px;
   font-family: "Roboto", sans-serif;
-  word-wrap: normal;
+  overflow-wrap: normal;
   overflow-x: hidden;
   text-overflow: ellipsis;
 }
@@ -487,7 +487,7 @@ hr {
   width: 35%;
 }
 .search_desc, .search_desc * {
-  word-wrap: normal;
+  overflow-wrap: normal;
   white-space: nowrap;
   overflow-y: hidden;
   overflow-x: hidden;
@@ -499,17 +499,23 @@ hr {
 }
 
 .summary_grid {
+  max-width: 100%;
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: fit-content(65%) 1fr;
 }
 .summary_grid_name {
   padding-left: 1ch;
   text-indent: -1ch;
   padding-right: 10px;
+  overflow: hidden;
+  overflow-wrap: break-word;
 }
 .summary_doc_summary * {
   padding: 0;
   margin: 0;
+  padding-right: 5px;
+  overflow: hidden;
+  overflow-wrap: break-word;
 }
 
 div {
@@ -532,7 +538,7 @@ body {
   font-family: "Source Serif 4", serif;
   scrollbar-width: auto;
   scrollbar-color: $scrollbar_fg $scrollbar_bg;
-  word-wrap: break-word;
+  overflow-wrap: break-word;
 
   &::-webkit-scrollbar {
     width: 12px;
