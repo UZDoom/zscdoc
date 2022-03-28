@@ -1,5 +1,6 @@
 $bg: #f7f7f7;
 $doc_code_bg: #e7e7e7;
+$table_head_bg: #e7e7e7;
 $scrollbar_bg: #c2c2c2;
 
 $sidebar_bg: #d6d1dc;
@@ -52,6 +53,17 @@ span {
   margin: 0;
   font-family: inherit;
   text-decoration: inherit;
+}
+
+table, th, td {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+th, td {
+  padding: 6px;
+}
+thead {
+  background-color: $table_head_bg;
 }
 
 .class {
