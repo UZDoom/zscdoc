@@ -216,6 +216,7 @@ impl BuiltinTypeHir {
         use anyhow::Context;
         let mut funcs_to_add = vec![];
         let mut vars_to_add = vec![];
+        let mut consts_to_add = vec![];
         if let Some(n) = &self.uses_things_from {
             let ns = zscript_parser::interner::intern_name(n);
             let h = hir
@@ -234,18 +235,21 @@ impl BuiltinTypeHir {
                 let i = &i[0];
                 match &i.kind {
                     zscript_parser::hir::StructInnerKind::FunctionDeclaration(f) => {
-                        funcs_to_add.push(FunctionHir { def: f.clone() })
+                        funcs_to_add.push(FunctionHir { def: f.clone() });
                     }
                     zscript_parser::hir::StructInnerKind::MemberDeclaration(m) => {
-                        vars_to_add.push(MemberVariableHir { def: m.clone() })
+                        vars_to_add.push(MemberVariableHir { def: m.clone() });
                     }
-                    zscript_parser::hir::StructInnerKind::Const(_c) => { /* TODO */ }
+                    zscript_parser::hir::StructInnerKind::Const(c) => {
+                        consts_to_add.push(ConstantHir { def: c.clone() });
+                    }
                     _ => {}
                 }
             }
         }
         funcs_to_add.sort_unstable_by_key(|x| x.def.span);
         vars_to_add.sort_unstable_by_key(|x| x.def.span);
+        consts_to_add.sort_unstable_by_key(|x| x.def.span);
         self.functions.extend(funcs_to_add);
         self.members.extend(vars_to_add);
         Ok(())
