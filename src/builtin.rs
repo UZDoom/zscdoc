@@ -28,6 +28,8 @@ pub struct ConstantFromFile {
 
 #[derive(serde::Deserialize, Debug)]
 pub struct BuiltinTypeFromFile {
+    #[serde(skip)]
+    pub(crate) filename: String,
     name: String,
     doc: String,
     uses_things_from: Option<String>,
@@ -56,6 +58,7 @@ pub struct ConstantHir {
 
 #[derive(Debug)]
 pub struct BuiltinTypeHir {
+    pub filename: String,
     pub name: String,
     pub doc: String,
     pub uses_things_from: Option<String>,
@@ -68,19 +71,20 @@ impl BuiltinTypeFromFile {
     pub fn produce(self, files: &mut Files) -> Result<BuiltinTypeHir, Vec<ParsingError>> {
         Ok(BuiltinTypeHir {
             doc: self.doc,
+            filename: self.filename.clone(),
             name: self.name,
             uses_things_from: self.uses_things_from,
             members: option_slice_to_slice(self.members.as_deref())
                 .iter()
-                .map(|m| m.produce(files))
+                .map(|m| m.produce(files, &self.filename))
                 .collect::<Result<Vec<_>, _>>()?,
             functions: option_slice_to_slice(self.functions.as_deref())
                 .iter()
-                .map(|m| m.produce(files))
+                .map(|m| m.produce(files, &self.filename))
                 .collect::<Result<Vec<_>, _>>()?,
             constants: option_slice_to_slice(self.constants.as_deref())
                 .iter()
-                .map(|m| m.produce(files))
+                .map(|m| m.produce(files, &self.filename))
                 .collect::<Result<Vec<_>, _>>()?,
         })
     }
@@ -119,8 +123,15 @@ fn parse_inner<T>(
 }
 
 impl MemberVariableFromFile {
-    fn produce(&self, files: &mut Files) -> Result<MemberVariableHir, Vec<ParsingError>> {
-        let file = File::new("member".to_string(), self.def.as_bytes().to_vec());
+    fn produce(
+        &self,
+        files: &mut Files,
+        filename: &str,
+    ) -> Result<MemberVariableHir, Vec<ParsingError>> {
+        let file = File::new(
+            filename.to_string() + " member variable",
+            self.def.as_bytes().to_vec(),
+        );
         let file_index = files.add(file);
         let (parsed, mut errs, err) = parse_inner(file_index, &self.def)?;
         let member = match parsed.kind {
@@ -146,8 +157,11 @@ impl MemberVariableFromFile {
 }
 
 impl FunctionFromFile {
-    fn produce(&self, files: &mut Files) -> Result<FunctionHir, Vec<ParsingError>> {
-        let file = File::new("function".to_string(), self.def.as_bytes().to_vec());
+    fn produce(&self, files: &mut Files, filename: &str) -> Result<FunctionHir, Vec<ParsingError>> {
+        let file = File::new(
+            filename.to_string() + " function",
+            self.def.as_bytes().to_vec(),
+        );
         let file_index = files.add(file);
         let (parsed, mut errs, err) = parse_inner(file_index, &self.def)?;
         let function = match parsed.kind {
@@ -166,8 +180,11 @@ impl FunctionFromFile {
 }
 
 impl ConstantFromFile {
-    fn produce(&self, files: &mut Files) -> Result<ConstantHir, Vec<ParsingError>> {
-        let file = File::new("function".to_string(), self.def.as_bytes().to_vec());
+    fn produce(&self, files: &mut Files, filename: &str) -> Result<ConstantHir, Vec<ParsingError>> {
+        let file = File::new(
+            filename.to_string() + " constant",
+            self.def.as_bytes().to_vec(),
+        );
         let file_index = files.add(file);
         let (parsed, errs, err) = parse_inner(file_index, &self.def)?;
         if !errs.is_empty() {
@@ -193,6 +210,7 @@ impl BuiltinTypeHir {
         crate::structures::Builtin {
             context: context.clone(),
             name: self.name.clone(),
+            filename: self.filename.clone(),
             doc_comment: self.doc.to_string(),
             variables: self
                 .members

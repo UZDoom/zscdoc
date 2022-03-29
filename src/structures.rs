@@ -163,6 +163,7 @@ pub struct Enum {
 pub struct Builtin {
     pub context: Vec<NameSymbol>,
     pub name: String,
+    pub filename: String,
     pub doc_comment: String,
     pub variables: Vec<MemberVariable>,
     pub functions: Vec<Function>,

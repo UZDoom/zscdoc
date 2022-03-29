@@ -4,12 +4,17 @@ mod item;
 mod structures;
 
 mod builtin;
+mod coverage;
 mod document;
 mod render;
 mod search;
 
-use crate::{builtin::BuiltinTypeFromFile, item::ItemProvider, render::render_from_markdown};
-use clap::Parser;
+use crate::{
+    builtin::BuiltinTypeFromFile, coverage::coverage_breakdown, item::ItemProvider,
+    render::render_from_markdown,
+};
+use clap::{ArgGroup, Parser};
+use coverage::CoverageLevel;
 use itertools::Itertools;
 use zscript_parser::{
     err::ToDisplayedErrors,
@@ -22,12 +27,21 @@ use crate::item::ToItemProvider;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about = "zscript documentation generator", long_about = None)]
+#[clap(group(ArgGroup::new("mode").required(true)))]
 struct Args {
     #[clap(short, long, help = "Path to the folder to document")]
     folder: String,
 
-    #[clap(short, long, help = "Path for the output folder")]
-    output: String,
+    #[clap(short, long, help = "Path for the output folder", group = "mode")]
+    output: Option<String>,
+
+    #[clap(
+        long,
+        arg_enum,
+        help = "Shows the doc coverage in one of a few formats",
+        group = "mode"
+    )]
+    coverage: Option<CoverageLevel>,
 
     #[clap(
         long,
@@ -259,8 +273,9 @@ fn get_builtins(files: &[File]) -> anyhow::Result<impl Iterator<Item = BuiltinTy
     let r: anyhow::Result<Vec<_>> = files
         .iter()
         .map(|f| {
-            let builtin: BuiltinTypeFromFile =
+            let mut builtin: BuiltinTypeFromFile =
                 toml::from_str(f.text()).context("builtin file parsing failed")?;
+            builtin.filename = f.filename().to_string();
             Ok(builtin)
         })
         .collect();
@@ -417,21 +432,30 @@ fn main() -> anyhow::Result<()> {
 
     let docs = document::hir_to_doc_structures(
         summary_doc,
-        config.archive.nice_name,
+        &config.archive.nice_name,
         &hir,
         &files,
         &item_provider,
         &dependencies,
         builtins,
     );
-    save_docs_to_folder(
-        &args.output,
-        &docs,
-        args.delete_without_confirm,
-        &item_provider,
-        favicon,
-        &markdown_files,
-    )?;
+
+    if let Some(c) = args.coverage {
+        let breakdown = coverage_breakdown(
+            docs.coverage(&config.archive.nice_name, &files)
+                .collect_vec(),
+        );
+        breakdown.show(c);
+    } else {
+        save_docs_to_folder(
+            &args.output.unwrap(),
+            &docs,
+            args.delete_without_confirm,
+            &item_provider,
+            favicon,
+            &markdown_files,
+        )?;
+    }
 
     Ok(())
 }

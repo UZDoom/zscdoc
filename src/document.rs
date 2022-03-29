@@ -1021,7 +1021,7 @@ fn enum_doc(
 
 pub fn hir_to_doc_structures(
     summary_doc: String,
-    nice_name: String,
+    nice_name: &str,
     hir: &hir::TopLevel,
     files: &Files,
     item_provider: &ItemProvider,
@@ -1029,7 +1029,7 @@ pub fn hir_to_doc_structures(
     builtins: Vec<Builtin>,
 ) -> Documentation {
     let mut docs = Documentation {
-        name: nice_name,
+        name: nice_name.to_string(),
         classes: vec![],
         structs: vec![],
         enums: vec![],

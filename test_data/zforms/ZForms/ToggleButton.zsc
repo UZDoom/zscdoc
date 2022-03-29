@@ -4,14 +4,6 @@ class ZF_ToggleButton : ZF_ButtonBase {
 	protected bool hover;
 	protected bool click;
 
-	/// A button that can be toggled on and off.
-	///
-	/// Test links to [`String`], [`hover`] and [`ZF_ToggleButton.create`].
-	///
-	/// | Stuff | More Stuff |
-	/// | ----- | ---------- |
-	/// | hi!   | hello!     |
-	/// | lol   | lmao       |
 	void config(
 		string text = "",
 		ZF_ButtonAnimator animator = NULL,
