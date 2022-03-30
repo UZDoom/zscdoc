@@ -658,7 +658,7 @@ fn class_doc(
                     class_to_add.overrides.push(func_to_add);
                 } else if f.flags.contains(hir::FunctionFlags::PROTECTED) {
                     class_to_add.protected.functions.push(func_to_add);
-                } else {
+                } else if !f.flags.contains(hir::FunctionFlags::PRIVATE) {
                     class_to_add.public.functions.push(func_to_add);
                 }
             }
@@ -686,7 +686,7 @@ fn class_doc(
                 };
                 if m.flags.contains(hir::MemberFlags::PROTECTED) {
                     class_to_add.protected.variables.push(var_to_add);
-                } else {
+                } else if !m.flags.contains(hir::MemberFlags::PRIVATE) {
                     class_to_add.public.variables.push(var_to_add);
                 }
             }
@@ -870,7 +870,7 @@ fn struct_doc(
                 };
                 if f.flags.contains(hir::FunctionFlags::PROTECTED) {
                     struct_to_add.protected.functions.push(func_to_add);
-                } else {
+                } else if !f.flags.contains(hir::FunctionFlags::PRIVATE) {
                     struct_to_add.public.functions.push(func_to_add);
                 }
             }
@@ -898,7 +898,7 @@ fn struct_doc(
                 };
                 if m.flags.contains(hir::MemberFlags::PROTECTED) {
                     struct_to_add.protected.variables.push(var_to_add);
-                } else {
+                } else if !m.flags.contains(hir::MemberFlags::PRIVATE) {
                     struct_to_add.public.variables.push(var_to_add);
                 }
             }
