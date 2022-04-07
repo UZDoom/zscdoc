@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use zscript_parser::{
     filesystem::Files,
-    hir::*,
+    hir::{self, *},
     interner::{intern_name, NameSymbol},
     ir_common::{ConstDefinition, EnumDefinition},
 };
@@ -153,6 +153,20 @@ trait AddToItemProvider {
         archive_num: usize,
     );
 }
+trait AddToItemProviderWithHir {
+    #[allow(clippy::too_many_arguments)]
+    fn add(
+        &self,
+        context: &[NameSymbol],
+        item_provider: &mut ItemProvider,
+        files: &Files,
+        owner: &Owner,
+        dependencies: &Dependencies,
+        archive_num: usize,
+        hir: &TopLevel,
+    );
+}
+
 impl AddToItemProvider for TopLevel {
     fn add(
         &self,
@@ -175,6 +189,7 @@ impl AddToItemProvider for TopLevel {
                         &Owner::Global,
                         dependencies,
                         archive_num,
+                        self,
                     );
                 }
                 zscript_parser::hir::TopLevelDefinitionKind::Struct(s) => {
@@ -213,7 +228,7 @@ impl AddToItemProvider for TopLevel {
     }
 }
 
-impl AddToItemProvider for ClassDefinition {
+impl AddToItemProviderWithHir for ClassDefinition {
     fn add(
         &self,
         context: &[NameSymbol],
@@ -222,85 +237,114 @@ impl AddToItemProvider for ClassDefinition {
         owner: &Owner,
         dependencies: &Dependencies,
         archive_num: usize,
+        hir: &TopLevel,
     ) {
         let context = context_with(context, self.name.symbol);
-        let name = files.text_from_span(self.name.span).to_string();
-        let link = owner_and(owner, name.clone());
-        let owner = Owner::Class(link.clone());
-        item_provider.items.insert(
-            context.clone(),
-            LinkedSection {
-                link_prefix: dependencies.get_link_prefix(archive_num),
-                text: name,
-                kind: LinkedSectionKind::Class { link },
-            },
-        );
-        for (_, d) in self.inners.iter() {
-            let def = &d[0];
-            match &def.kind {
-                ClassInnerKind::FunctionDeclaration(f) => {
-                    f.add(
-                        &context,
-                        item_provider,
-                        files,
-                        &owner,
-                        dependencies,
-                        archive_num,
-                    );
+        {
+            let name = files.text_from_span(self.name.span).to_string();
+            let link = owner_and(owner, name.clone());
+            item_provider.items.insert(
+                context.clone(),
+                LinkedSection {
+                    link_prefix: dependencies.get_link_prefix(archive_num),
+                    text: name,
+                    kind: LinkedSectionKind::Class { link },
+                },
+            );
+        }
+        let mut cur = self;
+        loop {
+            let name = files.text_from_span(cur.name.span).to_string();
+            let link = owner_and(owner, name.clone());
+            let owner = Owner::Class(link.clone());
+            for (_, d) in cur.inners.iter() {
+                let def = &d[0];
+                match &def.kind {
+                    ClassInnerKind::FunctionDeclaration(f) => {
+                        f.add(
+                            &context,
+                            item_provider,
+                            files,
+                            &owner,
+                            dependencies,
+                            archive_num,
+                        );
+                    }
+                    ClassInnerKind::MemberDeclaration(m) => {
+                        m.add(
+                            &context,
+                            item_provider,
+                            files,
+                            &owner,
+                            dependencies,
+                            archive_num,
+                        );
+                    }
+                    ClassInnerKind::Enum(e) => {
+                        e.add(
+                            &context,
+                            item_provider,
+                            files,
+                            &owner,
+                            dependencies,
+                            archive_num,
+                        );
+                    }
+                    ClassInnerKind::Struct(s) => {
+                        s.add(
+                            &context,
+                            item_provider,
+                            files,
+                            &owner,
+                            dependencies,
+                            archive_num,
+                        );
+                    }
+                    ClassInnerKind::Const(co) => {
+                        co.add(
+                            &context,
+                            item_provider,
+                            files,
+                            &owner,
+                            dependencies,
+                            archive_num,
+                        );
+                    }
+                    ClassInnerKind::StaticConstArray(sca) => {
+                        sca.add(
+                            &context,
+                            item_provider,
+                            files,
+                            &owner,
+                            dependencies,
+                            archive_num,
+                        );
+                    }
+                    ClassInnerKind::Property(_) => { /* TODO */ }
+                    ClassInnerKind::Flag(_) => { /* TODO */ }
                 }
-                ClassInnerKind::MemberDeclaration(m) => {
-                    m.add(
-                        &context,
-                        item_provider,
-                        files,
-                        &owner,
-                        dependencies,
-                        archive_num,
-                    );
-                }
-                ClassInnerKind::Enum(e) => {
-                    e.add(
-                        &context,
-                        item_provider,
-                        files,
-                        &owner,
-                        dependencies,
-                        archive_num,
-                    );
-                }
-                ClassInnerKind::Struct(s) => {
-                    s.add(
-                        &context,
-                        item_provider,
-                        files,
-                        &owner,
-                        dependencies,
-                        archive_num,
-                    );
-                }
-                ClassInnerKind::Const(co) => {
-                    co.add(
-                        &context,
-                        item_provider,
-                        files,
-                        &owner,
-                        dependencies,
-                        archive_num,
-                    );
-                }
-                ClassInnerKind::StaticConstArray(sca) => {
-                    sca.add(
-                        &context,
-                        item_provider,
-                        files,
-                        &owner,
-                        dependencies,
-                        archive_num,
-                    );
-                }
-                ClassInnerKind::Property(_) => { /* TODO */ }
-                ClassInnerKind::Flag(_) => { /* TODO */ }
             }
+            let ancestor_id = if let Some(a) = cur.ancestor {
+                a
+            } else {
+                break;
+            };
+            let ancestor = hir.definitions.get(&ancestor_id.symbol);
+            let ancestor = if let Some(h) = ancestor {
+                h
+            } else {
+                break;
+            };
+            let ancestor = ancestor.iter().find_map(|t| match &t.kind {
+                hir::TopLevelDefinitionKind::Class(c) => Some(c),
+                _ => None,
+            });
+            let ancestor = if let Some(h) = ancestor {
+                h
+            } else {
+                break;
+            };
+            cur = ancestor;
         }
     }
 }

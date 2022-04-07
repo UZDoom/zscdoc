@@ -82,6 +82,8 @@ struct Archive {
     base_file: String,
     #[serde(alias = "markdown_file")]
     markdown_files: Option<Vec<MarkdownFile>>,
+    #[serde(alias = "copy_file")]
+    copy_files: Option<Vec<CopyFile>>,
     #[serde(alias = "builtin")]
     builtins: Option<Vec<String>>,
 }
@@ -92,10 +94,20 @@ struct MarkdownFile {
     title: String,
 }
 
+#[derive(serde::Deserialize, Debug)]
+struct CopyFile {
+    filename: String,
+}
+
 struct MarkdownFileToRender {
     output_filename: String,
     title: String,
     markdown: String,
+}
+
+struct CopyFileToRender {
+    output_filename: String,
+    bytes: Vec<u8>,
 }
 
 fn save_docs_to_folder(
@@ -105,6 +117,7 @@ fn save_docs_to_folder(
     item_provider: &ItemProvider,
     favicon: Option<&[u8]>,
     markdown_files: &[MarkdownFileToRender],
+    copy_files: &[CopyFileToRender],
 ) -> anyhow::Result<()> {
     use std::fs::*;
     use std::io::*;
@@ -125,6 +138,10 @@ fn save_docs_to_folder(
         }
     }
     create_dir(&path)?;
+    for m in copy_files {
+        let mut file = File::create(path.join(&*m.output_filename))?;
+        file.write_all(&m.bytes)?;
+    }
     for m in markdown_files {
         let mut file = File::create(path.join(&*m.output_filename))?;
         file.write_all(
@@ -214,7 +231,7 @@ fn save_docs_to_folder(
     {
         let mut file = File::create(path.join("search.json"))?;
         file.write_all(
-            serde_json::to_string(&search::collect_search_results(docs))
+            serde_json::to_string(&search::collect_search_results(docs, item_provider))
                 .unwrap()
                 .as_bytes(),
         )?;
@@ -363,6 +380,22 @@ fn main() -> anyhow::Result<()> {
         .collect();
     let markdown_files = markdown_files?;
 
+    let copy_files: Result<Vec<_>, anyhow::Error> = option_vec_to_vec(config.archive.copy_files)
+        .iter()
+        .map(|m| {
+            let output_filename = m.filename.clone();
+            let filename_to_get = format!("docs/{}", m.filename);
+            let file = filesystem
+                .get_file(&filename_to_get)
+                .context(format!("file {:?} didn't exist", filename_to_get))?;
+            Ok(CopyFileToRender {
+                output_filename,
+                bytes: file.data().to_vec(),
+            })
+        })
+        .collect();
+    let copy_files = copy_files?;
+
     let depedencies = collect_dependencies(&option_vec_to_vec(config.dependency))?;
 
     let mut errs = vec![];
@@ -454,6 +487,7 @@ fn main() -> anyhow::Result<()> {
             &item_provider,
             favicon,
             &markdown_files,
+            &copy_files,
         )?;
     }
 

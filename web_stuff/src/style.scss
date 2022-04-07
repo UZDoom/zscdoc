@@ -96,6 +96,21 @@ thead {
   code,
   pre {
     background-color: $doc_code_bg;
+    white-space: pre;
+  }
+  pre {
+    overflow-x: auto;
+    scrollbar-color: $scrollbar_fg $scrollbar_bg;
+
+    &::-webkit-scrollbar-track {
+      background: $scrollbar_bg;
+    }
+  }
+  img {
+    max-width: min(100%, 600px);
+    height: auto;
+    padding: 0;
+    margin: 0;
   }
 }
 
@@ -510,12 +525,14 @@ hr {
   overflow: hidden;
   overflow-wrap: break-word;
 }
-.summary_doc_summary * {
-  padding: 0;
-  margin: 0;
+.inline_summary {
   padding-right: 5px;
   overflow: hidden;
   overflow-wrap: break-word;
+}
+.summary_doc_summary * {
+  padding: 0;
+  margin: 0;
 }
 
 div {
@@ -542,6 +559,7 @@ body {
 
   &::-webkit-scrollbar {
     width: 12px;
+    height: 12px;
   }
   &::-webkit-scrollbar-thumb {
     background-color: $scrollbar_fg;

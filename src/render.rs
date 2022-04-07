@@ -33,10 +33,11 @@ fn add_zws(text: &str) -> String {
     text
 }
 
-struct SummaryGridRow {
+struct SummaryGridRow<'a> {
     name: String,
     link: String,
     doc_comment: String,
+    context: &'a [zscript_parser::interner::NameSymbol],
 }
 
 fn render_html_boilerplate(
@@ -147,7 +148,11 @@ fn broken_link_callback<'a>(
     }
 }
 
-pub fn render_doc_summary(text: &str) -> Option<Box<dyn FlowContent<String>>> {
+pub fn render_doc_summary(
+    text: &str,
+    item_provider: &ItemProvider,
+    context: &[zscript_parser::interner::NameSymbol],
+) -> Option<Box<dyn FlowContent<String>>> {
     if text.trim().is_empty() {
         return None;
     }
@@ -214,7 +219,13 @@ pub fn render_doc_summary(text: &str) -> Option<Box<dyn FlowContent<String>>> {
 
         let options = Options::ENABLE_TABLES;
 
-        let parser = Parser::new_ext(&dedented, options).map(|x| md_event_map(x, None));
+        let mut broken_link_callback = |x| broken_link_callback(x, item_provider, context);
+        let parser = Parser::new_with_broken_link_callback(
+            &dedented,
+            options,
+            Some(&mut broken_link_callback),
+        )
+        .map(|x| md_event_map(x, Some((item_provider, context))));
 
         let parser = map(parser);
 
@@ -670,7 +681,8 @@ fn render_summary_grid<'a>(
     heading: &str,
     heading_id: &str,
     link_class: &'a str,
-    data: &[SummaryGridRow],
+    data: &[SummaryGridRow<'a>],
+    item_provider: &'a ItemProvider,
 ) -> impl Iterator<Item = Box<dyn FlowContent<String>>> + 'a {
     render_section_from_slice(heading, heading_id, "summary_grid", data, false, move |c| {
         [
@@ -685,7 +697,7 @@ fn render_summary_grid<'a>(
             ) as Box<dyn FlowContent<String>>,
             html!(
                 <div class="summary_doc_summary">
-                    { render_doc_summary(&c.doc_comment) }
+                    { render_doc_summary(&c.doc_comment, item_provider, c.context) }
                 </div>
             ) as _,
         ]
@@ -960,8 +972,10 @@ impl Class {
                                 &self.inner_structs.iter().map(|s| SummaryGridRow {
                                     name: s.name.clone(),
                                     link: format!("/struct.{}.html", s.name),
-                                    doc_comment: s.doc_comment.clone()
-                                }).collect_vec()
+                                    doc_comment: s.doc_comment.clone(),
+                                    context: &s.context,
+                                }).collect_vec(),
+                                item_provider,
                             )
                         ).chain(
                             render_summary_grid(
@@ -971,8 +985,10 @@ impl Class {
                                 &self.inner_enums.iter().map(|e| SummaryGridRow {
                                     name: e.name.clone(),
                                     link: format!("/enum.{}.html", e.name),
-                                    doc_comment: e.doc_comment.clone()
-                                }).collect_vec()
+                                    doc_comment: e.doc_comment.clone(),
+                                    context: &e.context,
+                                }).collect_vec(),
+                                item_provider,
                             )
                         )
                     }
@@ -1054,8 +1070,10 @@ impl Struct {
                                 &self.inner_enums.iter().map(|e| SummaryGridRow {
                                     name: e.name.clone(),
                                     link: format!("/enum.{}.html", e.name),
-                                    doc_comment: e.doc_comment.clone()
-                                }).collect_vec()
+                                    doc_comment: e.doc_comment.clone(),
+                                    context: &e.context
+                                }).collect_vec(),
+                                item_provider
                             )
                         )
                     }
@@ -1281,8 +1299,10 @@ impl Documentation {
                             &self.builtins.iter().map(|c| SummaryGridRow {
                                 name: c.name.clone(),
                                 link: format!("/builtin.{}.html", c.name),
-                                doc_comment: c.doc_comment.clone()
-                            }).collect_vec()
+                                doc_comment: c.doc_comment.clone(),
+                                context: &c.context,
+                            }).collect_vec(),
+                            item_provider,
                         )
                     }
                     {
@@ -1293,8 +1313,10 @@ impl Documentation {
                             &self.classes.iter().map(|c| SummaryGridRow {
                                 name: c.name.clone(),
                                 link: format!("/class.{}.html", c.name),
-                                doc_comment: c.doc_comment.clone()
-                            }).collect_vec()
+                                doc_comment: c.doc_comment.clone(),
+                                context: &c.context,
+                            }).collect_vec(),
+                            item_provider,
                         )
                     }
                     {
@@ -1305,8 +1327,10 @@ impl Documentation {
                             &self.structs.iter().map(|s| SummaryGridRow {
                                 name: s.name.clone(),
                                 link: format!("/struct.{}.html", s.name),
-                                doc_comment: s.doc_comment.clone()
-                            }).collect_vec()
+                                doc_comment: s.doc_comment.clone(),
+                                context: &s.context,
+                            }).collect_vec(),
+                            item_provider,
                         )
                     }
                     {
@@ -1317,8 +1341,10 @@ impl Documentation {
                             &self.enums.iter().map(|e| SummaryGridRow {
                                 name: e.name.clone(),
                                 link: format!("/enum.{}.html", e.name),
-                                doc_comment: e.doc_comment.clone()
-                            }).collect_vec()
+                                doc_comment: e.doc_comment.clone(),
+                                context: &e.context,
+                            }).collect_vec(),
+                            item_provider,
                         )
                     }
                 </div>
