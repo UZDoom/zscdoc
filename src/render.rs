@@ -858,7 +858,7 @@ impl Class {
             .chain(sidebar_sections_from_slice(
                 "Flags",
                 "#flags",
-                &self.overrides,
+                &self.flags,
                 |v| SidebarSection::Text {
                     text: v.name.clone(),
                     link: format!("#flag.{}", v.name),
