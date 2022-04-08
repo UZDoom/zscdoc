@@ -44,13 +44,14 @@ fn render_html_boilerplate(
     title: &str,
     body: Box<dyn FlowContent<String>>,
     sidebar_data: SidebarData,
+    base: &str,
 ) -> DOMTree<String> {
     html!(
         <html lang="en-US">
             <head>
                 <title> { text!(title) } </title>
-                <link rel="icon" type="image/x-icon" href="/favicon.png"/>
-                <link rel="stylesheet" href="/main.css"/>
+                <link rel="icon" type="image/x-icon" href={ prefix_href(base, "/favicon.png") }/>
+                <link rel="stylesheet" href={ prefix_href(base, "/main.css") }/>
                 <script src="main.bundle.js"></script>
                 <meta charset="UTF-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -58,12 +59,12 @@ fn render_html_boilerplate(
             <body>
                 <div id="header">
                     <button id="header_button">"☰"</button>
-                    <h1 id="header_main_link"><a href="/index.html">
+                    <h1 id="header_main_link"><a href={ prefix_href(base, "/index.html") }>
                         { text!(&sidebar_data.docs_name) } " Documentation"
                     </a></h1>
                 </div>
                 <div id="not_header">
-                    { render_sidebar(sidebar_data) }
+                    { render_sidebar(sidebar_data, base) }
                     <div id="inner">
                         <div id="search">
                             <input id="search_input" placeholder="Search"/>
@@ -96,6 +97,7 @@ fn render_doc_vis_toggle_button(
 fn md_event_map<'a>(
     event: pulldown_cmark::Event<'a>,
     i: Option<(&ItemProvider, &[zscript_parser::interner::NameSymbol])>,
+    base: &str,
 ) -> pulldown_cmark::Event<'a> {
     use pulldown_cmark::{Event, Tag};
     let link_process = |ty, link: CowStr<'a>, title| match i {
@@ -104,7 +106,7 @@ fn md_event_map<'a>(
                 let s = link.to_string();
                 let chain = s.split('.').map(|x| intern_name(x.trim()));
                 match item_provider.resolve(context, chain) {
-                    Some(v) => Tag::Link(ty, v.last().unwrap().get_href().into(), s.into()),
+                    Some(v) => Tag::Link(ty, v.last().unwrap().get_href(base).into(), s.into()),
                     None => Tag::Link(ty, link, title),
                 }
             }
@@ -126,6 +128,7 @@ fn broken_link_callback<'a>(
     b: BrokenLink<'a>,
     item_provider: &ItemProvider,
     context: &[zscript_parser::interner::NameSymbol],
+    base: &str,
 ) -> Option<(CowStr<'a>, CowStr<'a>)> {
     match b.link_type {
         LinkType::Shortcut => {
@@ -142,7 +145,7 @@ fn broken_link_callback<'a>(
             let chain = s.split('.').map(|x| intern_name(x.trim()));
             item_provider
                 .resolve(context, chain)
-                .map(|v| (v.last().unwrap().get_href().into(), s.into()))
+                .map(|v| (v.last().unwrap().get_href(base).into(), s.into()))
         }
         _ => None,
     }
@@ -152,6 +155,7 @@ pub fn render_doc_summary(
     text: &str,
     item_provider: &ItemProvider,
     context: &[zscript_parser::interner::NameSymbol],
+    base: &str,
 ) -> Option<Box<dyn FlowContent<String>>> {
     if text.trim().is_empty() {
         return None;
@@ -219,13 +223,13 @@ pub fn render_doc_summary(
 
         let options = Options::ENABLE_TABLES;
 
-        let mut broken_link_callback = |x| broken_link_callback(x, item_provider, context);
+        let mut broken_link_callback = |x| broken_link_callback(x, item_provider, context, base);
         let parser = Parser::new_with_broken_link_callback(
             &dedented,
             options,
             Some(&mut broken_link_callback),
         )
-        .map(|x| md_event_map(x, Some((item_provider, context))));
+        .map(|x| md_event_map(x, Some((item_provider, context)), base));
 
         let parser = map(parser);
 
@@ -248,6 +252,7 @@ fn render_doc_comment(
     id: &str,
     item_provider: &ItemProvider,
     context: &[zscript_parser::interner::NameSymbol],
+    base: &str,
 ) -> Option<Box<dyn FlowContent<String>>> {
     if text.trim().is_empty() {
         return None;
@@ -258,13 +263,13 @@ fn render_doc_comment(
 
         let options = Options::ENABLE_TABLES;
 
-        let mut broken_link_callback = |x| broken_link_callback(x, item_provider, context);
+        let mut broken_link_callback = |x| broken_link_callback(x, item_provider, context, base);
         let parser = Parser::new_with_broken_link_callback(
             &dedented,
             options,
             Some(&mut broken_link_callback),
         )
-        .map(|x| md_event_map(x, Some((item_provider, context))));
+        .map(|x| md_event_map(x, Some((item_provider, context)), base));
 
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
@@ -338,23 +343,31 @@ impl LinkedSectionKind {
     }
 }
 
+fn prefix_href(base: &str, href: &str) -> String {
+    if href.starts_with('#') {
+        href.to_string()
+    } else {
+        format!("{}{}", base, href)
+    }
+}
+
 impl LinkedSection {
     fn get_style(&self) -> &'static str {
         self.kind.get_style()
     }
 
-    fn get_href(&self) -> String {
+    fn get_href(&self, base: &str) -> String {
         let kind_href = self.kind.get_kind_href();
-        let prefix = self.link_prefix.as_deref().unwrap_or_default();
-        format!("{}{}", prefix, kind_href)
+        let prefix = self.link_prefix.as_deref().unwrap_or(base);
+        prefix_href(prefix, &kind_href)
     }
 }
 impl SourceCodeSection {
-    fn render(&self) -> Box<dyn PhrasingContent<String>> {
+    fn render(&self, base: &str) -> Box<dyn PhrasingContent<String>> {
         match self {
             SourceCodeSection::NoLink(s) => text!(add_zws(s)),
             SourceCodeSection::Linked(l) => html!(
-                <a href={ l.get_href() } class={ l.get_style() }>{ text!(add_zws(&l.text)) }</a>
+                <a href={ &l.get_href(base) } class={ l.get_style() }>{ text!(add_zws(&l.text)) }</a>
             ),
             SourceCodeSection::NoNewlineSpacing => text!(" "),
             _ => unreachable!(),
@@ -379,6 +392,7 @@ impl SourceCodeWithLinks {
     fn render_multiline_section(
         indent: bool,
         sections: &[&SourceCodeSection],
+        base: &str,
     ) -> Box<dyn FlowContent<String>> {
         let classes: SpacedSet<typed_html::types::Class> = if indent {
             ["source_line", "indent"].try_into().unwrap()
@@ -394,13 +408,16 @@ impl SourceCodeWithLinks {
                         s,
                         SourceCodeSection::NoNewlineSpacing
                     ))
-                    .map(|s| s.render())
+                    .map(|s| s.render(base))
                 }
             </code></pre>
         )
     }
 
-    fn render_singleline_section(sections: &[SourceCodeSection]) -> Box<dyn FlowContent<String>> {
+    fn render_singleline_section(
+        sections: &[SourceCodeSection],
+        base: &str,
+    ) -> Box<dyn FlowContent<String>> {
         html!(
             <div class="source">
                 <pre class=["source_line", "no_indent"]><code>
@@ -412,7 +429,7 @@ impl SourceCodeWithLinks {
                             SourceCodeSection::PotentialNewlineIndent
                             | SourceCodeSection::PotentialNewlineOnly
                         ))
-                        .map(|s| s.render())
+                        .map(|s| s.render(base))
                     }
                 </code></pre>
             </div>
@@ -493,22 +510,22 @@ impl SourceCodeWithLinks {
         }
     }
 
-    fn render(&self) -> Box<dyn FlowContent<String>> {
+    fn render(&self, base: &str) -> Box<dyn FlowContent<String>> {
         self.render_with_func(
-            Self::render_multiline_section,
-            Self::render_singleline_section,
+            |x, y| Self::render_multiline_section(x, y, base),
+            |x| Self::render_singleline_section(x, base),
         )
     }
 }
 
 impl MemberVariable {
-    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("member.{}.docs", self.name);
         html!(
             <div>
                 <div class="doc_row" id={ Id::new(format!("member.{}", self.name)) }>
                     <div class="doc_main">
-                        { self.def.render() }
+                        { self.def.render(base) }
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
@@ -528,7 +545,7 @@ impl MemberVariable {
                         </div>
                     ))
                 }
-                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context, base) }
                 <hr/>
             </div>
         )
@@ -536,13 +553,13 @@ impl MemberVariable {
 }
 
 impl Function {
-    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("function.{}.docs", self.name);
         html!(
             <div>
                 <div class="doc_row" id={ Id::new(format!("function.{}", self.name)) }>
                     <div class="doc_main">
-                        { self.signature.render() }
+                        { self.signature.render(base) }
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
@@ -567,13 +584,13 @@ impl Function {
                         <div class="info">
                             <span class="info_icon">"ⓘ"</span>
                             "overrides "
-                            <code><a href=o.get_href() class=o.get_style()>
+                            <code><a href={ o.get_href(base) } class={ o.get_style() }>
                                 { text!(&o.text) }
                             </a></code>
                         </div>
                     ))
                 }
-                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context, base) }
                 <hr/>
             </div>
         )
@@ -581,17 +598,17 @@ impl Function {
 }
 
 impl Constant {
-    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("constant.{}.docs", self.name);
         html!(
             <div>
                 <div class="doc_row" id={ Id::new(format!("constant.{}", self.name)) }>
                     <div class="doc_main">
-                        { self.def.render() }
+                        { self.def.render(base) }
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
-                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context, base) }
                 <hr/>
             </div>
         )
@@ -599,17 +616,17 @@ impl Constant {
 }
 
 impl Property {
-    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("property.{}.docs", self.name);
         html!(
             <div>
                 <div class="doc_row" id={ Id::new(format!("property.{}", self.name)) }>
                     <div class="doc_main">
-                        { self.def.render() }
+                        { self.def.render(base) }
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
-                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context, base) }
                 <hr/>
             </div>
         )
@@ -617,17 +634,17 @@ impl Property {
 }
 
 impl Flag {
-    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("flag.{}.docs", self.name);
         html!(
             <div>
                 <div class="doc_row" id={ Id::new(format!("flag.{}", self.name)) }>
                     <div class="doc_main">
-                        { self.def.render() }
+                        { self.def.render(base) }
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
-                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context, base) }
                 <hr/>
             </div>
         )
@@ -683,13 +700,14 @@ fn render_summary_grid<'a>(
     link_class: &'a str,
     data: &[SummaryGridRow<'a>],
     item_provider: &'a ItemProvider,
+    base: &'a str,
 ) -> impl Iterator<Item = Box<dyn FlowContent<String>>> + 'a {
     render_section_from_slice(heading, heading_id, "summary_grid", data, false, move |c| {
         [
             html!(
                 <div class="summary_grid_name">
                     <code>
-                        <a href={ c.link.clone() } class={ link_class }>
+                        <a href={ prefix_href(base, &c.link) } class={ link_class }>
                             { text!(add_zws(&c.name)) }
                         </a>
                     </code>
@@ -697,7 +715,7 @@ fn render_summary_grid<'a>(
             ) as Box<dyn FlowContent<String>>,
             html!(
                 <div class="summary_doc_summary">
-                    { render_doc_summary(&c.doc_comment, item_provider, c.context) }
+                    { render_doc_summary(&c.doc_comment, item_provider, c.context, base) }
                 </div>
             ) as _,
         ]
@@ -708,6 +726,7 @@ fn render_summary_grid<'a>(
 fn render_members_functions_pair<'a>(
     (vis, mf, collapsed_by_default): &(&str, &VariablesAndFunctions, bool),
     item_provider: &'a ItemProvider,
+    base: &'a str,
 ) -> impl IntoIterator<Item = Box<dyn FlowContent<String>>> + 'a {
     (render_section_from_slice(
         &format!("{vis} Member Variables"),
@@ -715,7 +734,7 @@ fn render_members_functions_pair<'a>(
         "",
         &mf.variables,
         *collapsed_by_default,
-        |v| v.render(item_provider),
+        |v| v.render(item_provider, base),
     ))
     .chain(render_section_from_slice(
         &format!("{vis} Functions"),
@@ -723,7 +742,7 @@ fn render_members_functions_pair<'a>(
         "",
         &mf.functions,
         *collapsed_by_default,
-        |v| v.render(item_provider),
+        |v| v.render(item_provider, base),
     ))
 }
 
@@ -771,12 +790,12 @@ fn sidebar_sections_members_functions_pair<'a>(
     ))
 }
 
-fn render_sidebar(data: SidebarData) -> Box<dyn FlowContent<String>> {
+fn render_sidebar(data: SidebarData, base: &str) -> Box<dyn FlowContent<String>> {
     html!(
         <nav id="sidebar">
             <div id="sidebar_main_link_container">
                 <div class="sidebar_padder">
-                    <h1 id="sidebar_main_link"><a href="/index.html">
+                    <h1 id="sidebar_main_link"><a href={ prefix_href(base, "/index.html") }>
                         { text!(data.docs_name) } " Documentation"
                     </a></h1>
                 </div>
@@ -791,7 +810,7 @@ fn render_sidebar(data: SidebarData) -> Box<dyn FlowContent<String>> {
             { data.sections.iter().map(|s| match s {
                 SidebarSection::Header { text, link: Some(link) } => html!(
                     <div>
-                        <a class="sidebar_header sidebar_clickable" href={ link } title={ text }>
+                        <a class="sidebar_header sidebar_clickable" href={ prefix_href(base, link) } title={ text }>
                             { text!(text) }
                         </a>
                         <hr/>
@@ -804,7 +823,7 @@ fn render_sidebar(data: SidebarData) -> Box<dyn FlowContent<String>> {
                     </div>
                 ) as Box<dyn FlowContent<_>>,
                 SidebarSection::Text { text, link } => html!(
-                    <a class="sidebar_link sidebar_clickable" href={ link } title={ text }>
+                    <a class="sidebar_link sidebar_clickable" href={ prefix_href(base, link) } title={ text }>
                         { text!(text) }
                     </a>
                 ) as Box<dyn FlowContent<_>>
@@ -814,7 +833,12 @@ fn render_sidebar(data: SidebarData) -> Box<dyn FlowContent<String>> {
 }
 
 impl Class {
-    pub fn render(&self, docs_name: &str, item_provider: &ItemProvider) -> DOMTree<String> {
+    pub fn render(
+        &self,
+        docs_name: &str,
+        item_provider: &ItemProvider,
+        base: &str,
+    ) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Constants", "#constants", &self.constants, |v| {
                 SidebarSection::Text {
@@ -891,7 +915,7 @@ impl Class {
                         <div class="doc_main">
                             <h1 class="main_heading">
                                 "Class "
-                                <a href={ format!("/class.{}.html", self.name) } class="class">
+                                <a href={ prefix_href(base, &format!("/class.{}.html", self.name)) } class="class">
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
@@ -912,7 +936,7 @@ impl Class {
                                                                     SourceCodeSection::PotentialNewlineIndent
                                                                     | SourceCodeSection::PotentialNewlineOnly
                                                                 ))
-                                                                .map(|s| s.render())
+                                                                .map(|s| s.render(base))
                                                             }
                                                         </span>
                                                     )
@@ -930,25 +954,25 @@ impl Class {
                         { render_doc_vis_toggle_button(&self.doc_comment, docs_id) }
                     </div>
                     <hr/>
-                    { render_doc_comment(&self.doc_comment, true, docs_id, item_provider, &self.context) }
+                    { render_doc_comment(&self.doc_comment, true, docs_id, item_provider, &self.context, base) }
                     {
                         render_section_from_slice(
                             "Constants", "constants", "", &self.constants, false,
                             |v| {
-                                v.render(item_provider)
+                                v.render(item_provider, base)
                             }
                         ).chain(
                             render_section_from_slice(
                                 "Properties", "properties", "", &self.properties, false,
                                 |v| {
-                                    v.render(item_provider)
+                                    v.render(item_provider, base)
                                 }
                             )
                         ).chain(
                             render_section_from_slice(
                                 "Flags", "flags", "", &self.flags, false,
                                 |v| {
-                                    v.render(item_provider)
+                                    v.render(item_provider, base)
                                 }
                             )
                         ).chain(
@@ -956,12 +980,12 @@ impl Class {
                                 ("Public", &self.public, false),
                                 ("Protected", &self.protected, false),
                                 ("Private", &self.private, true),
-                            ].iter().flat_map(|x| render_members_functions_pair(x, item_provider))
+                            ].iter().flat_map(|x| render_members_functions_pair(x, item_provider, base))
                         ).chain(
                             render_section_from_slice(
                                 "Overrides", "overrides", "", &self.overrides, true,
                                 |v| {
-                                    v.render(item_provider)
+                                    v.render(item_provider, base)
                                 }
                             )
                         ).chain(
@@ -976,6 +1000,7 @@ impl Class {
                                     context: &s.context,
                                 }).collect_vec(),
                                 item_provider,
+                                base,
                             )
                         ).chain(
                             render_summary_grid(
@@ -989,18 +1014,25 @@ impl Class {
                                     context: &e.context,
                                 }).collect_vec(),
                                 item_provider,
+                                base,
                             )
                         )
                     }
                 </div>
             ),
             sidebar_data,
+            base,
         )
     }
 }
 
 impl Struct {
-    pub fn render(&self, docs_name: &str, item_provider: &ItemProvider) -> DOMTree<String> {
+    pub fn render(
+        &self,
+        docs_name: &str,
+        item_provider: &ItemProvider,
+        base: &str,
+    ) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Constants", "#constants", &self.constants, |v| {
                 SidebarSection::Text {
@@ -1041,7 +1073,7 @@ impl Struct {
                         <div class="doc_main">
                             <h1 class="main_heading">
                                 "Struct "
-                                <a href={ format!("/struct.{}.html", self.name) } class="struct">
+                                <a href={ prefix_href(base, &format!("/struct.{}.html", self.name)) } class="struct">
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
@@ -1049,19 +1081,19 @@ impl Struct {
                         { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                     </div>
                     <hr/>
-                    { render_doc_comment(&self.doc_comment, true, &docs_id, item_provider, &self.context) }
+                    { render_doc_comment(&self.doc_comment, true, &docs_id, item_provider, &self.context, base) }
                     {
                         render_section_from_slice(
                             "Constants", "constants", "", &self.constants, false,
                             |v| {
-                                v.render(item_provider)
+                                v.render(item_provider, base)
                             }
                         ).chain(
                             [
                                 ("Public", &self.public, false),
                                 ("Protected", &self.protected, false),
                                 ("Private", &self.private, true)
-                            ].iter().flat_map(|x| render_members_functions_pair(x, item_provider))
+                            ].iter().flat_map(|x| render_members_functions_pair(x, item_provider, base))
                         ).chain(
                             render_summary_grid(
                                 "Inner Enums",
@@ -1073,19 +1105,26 @@ impl Struct {
                                     doc_comment: e.doc_comment.clone(),
                                     context: &e.context
                                 }).collect_vec(),
-                                item_provider
+                                item_provider,
+                                base,
                             )
                         )
                     }
                 </div>
             ),
             sidebar_data,
+            base,
         )
     }
 }
 
 impl Builtin {
-    pub fn render(&self, docs_name: &str, item_provider: &ItemProvider) -> DOMTree<String> {
+    pub fn render(
+        &self,
+        docs_name: &str,
+        item_provider: &ItemProvider,
+        base: &str,
+    ) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Constants", "#constants", &self.constants, |v| {
                 SidebarSection::Text {
@@ -1126,7 +1165,10 @@ impl Builtin {
                         <div class="doc_main">
                             <h1 class="main_heading">
                                 "Builtin "
-                                <a href={ format!("/builtin.{}.html", self.name) } class="builtin">
+                                <a
+                                    href={ prefix_href(base, &format!("/builtin.{}.html", self.name)) }
+                                    class="builtin"
+                                >
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
@@ -1134,25 +1176,25 @@ impl Builtin {
                         { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                     </div>
                     <hr/>
-                    { render_doc_comment(&self.doc_comment, true, &docs_id, item_provider, &self.context) }
+                    { render_doc_comment(&self.doc_comment, true, &docs_id, item_provider, &self.context, base) }
                     {
                         render_section_from_slice(
                             "Constants", "constants", "", &self.constants, false,
                             |v| {
-                                v.render(item_provider)
+                                v.render(item_provider, base)
                             }
                         ).chain(
                             render_section_from_slice(
                                 "Functions", "functions", "", &self.functions, false,
                                 |v| {
-                                    v.render(item_provider)
+                                    v.render(item_provider, base)
                                 }
                             )
                         ).chain(
                             render_section_from_slice(
                                 "Member Variables", "members", "", &self.variables, false,
                                 |v| {
-                                    v.render(item_provider)
+                                    v.render(item_provider, base)
                                 }
                             )
                         )
@@ -1160,24 +1202,25 @@ impl Builtin {
                 </div>
             ),
             sidebar_data,
+            base,
         )
     }
 }
 
 impl Enumerator {
-    fn render(&self, item_provider: &ItemProvider) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("enumerator.{}.docs", self.name);
         html!(
             <div>
                 <div class="doc_row" id={ Id::new(format!("function.{}", self.name)) }>
                     <div class="doc_main">
                         <div class="doc_row" id={ Id::new(format!("enumerator.{}", self.name)) }>
-                            { self.decl.render() }
+                            { self.decl.render(base) }
                         </div>
                     </div>
                     { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                 </div>
-                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context) }
+                { render_doc_comment(&self.doc_comment, false, &docs_id, item_provider, &self.context, base) }
                 <hr/>
             </div>
         )
@@ -1185,7 +1228,12 @@ impl Enumerator {
 }
 
 impl Enum {
-    pub fn render(&self, docs_name: &str, item_provider: &ItemProvider) -> DOMTree<String> {
+    pub fn render(
+        &self,
+        docs_name: &str,
+        item_provider: &ItemProvider,
+        base: &str,
+    ) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Enumerators", "#enumerators", &self.enumerators, |v| {
                 SidebarSection::Text {
@@ -1208,7 +1256,10 @@ impl Enum {
                         <div class="doc_main">
                             <h1 class="main_heading">
                                 "Enum "
-                                <a href={ format!("/enum.{}.html", self.name) } class="enum">
+                                <a
+                                    href={ prefix_href(base, &format!("/enum.{}.html", self.name)) }
+                                    class="enum"
+                                >
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
@@ -1216,18 +1267,19 @@ impl Enum {
                         </div>
                         { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                     </div>
-                    { render_doc_comment(&self.doc_comment, true, &docs_id, item_provider, &self.context) }
+                    { render_doc_comment(&self.doc_comment, true, &docs_id, item_provider, &self.context, base) }
                     <h1 class="sub_heading" id="enumerators">"Enumerators"</h1>
-                    { self.enumerators.iter().map(|v| v.render(item_provider)) }
+                    { self.enumerators.iter().map(|v| v.render(item_provider, base)) }
                 </div>
             ),
             sidebar_data,
+            base,
         )
     }
 }
 
 impl Documentation {
-    pub fn render_summary_page(&self, item_provider: &ItemProvider) -> DOMTree<String> {
+    pub fn render_summary_page(&self, item_provider: &ItemProvider, base: &str) -> DOMTree<String> {
         let mut sections = vec![SidebarSection::Header {
             text: "Contents".to_string(),
             link: None,
@@ -1238,7 +1290,7 @@ impl Documentation {
                 link: "#constants".to_string(),
             });
         }
-        if !self.enums.is_empty() {
+        if !self.builtins.is_empty() {
             sections.push(SidebarSection::Text {
                 text: "Builtin Types".to_string(),
                 link: "#builtins".to_string(),
@@ -1275,19 +1327,19 @@ impl Documentation {
                     <div class="doc_row">
                         <div class="doc_main">
                             <h1 class="main_heading">
-                                <a href="/index.html"> { text!(&self.name) } </a>
+                                <a href={ prefix_href(base, "/index.html") }> { text!(&self.name) } </a>
                                 " Documentation"
                             </h1>
                         </div>
                         { render_doc_vis_toggle_button(&self.summary_doc, docs_id) }
                     </div>
                     <hr/>
-                    { render_doc_comment(&self.summary_doc, true, docs_id, item_provider, &[]) }
+                    { render_doc_comment(&self.summary_doc, true, docs_id, item_provider, &[], base) }
                     {
                         render_section_from_slice(
                             "Constants", "constants", "", &self.constants, false,
                             |v| {
-                                v.render(item_provider)
+                                v.render(item_provider, base)
                             }
                         )
                     }
@@ -1303,6 +1355,7 @@ impl Documentation {
                                 context: &c.context,
                             }).collect_vec(),
                             item_provider,
+                            base,
                         )
                     }
                     {
@@ -1317,6 +1370,7 @@ impl Documentation {
                                 context: &c.context,
                             }).collect_vec(),
                             item_provider,
+                            base,
                         )
                     }
                     {
@@ -1331,6 +1385,7 @@ impl Documentation {
                                 context: &s.context,
                             }).collect_vec(),
                             item_provider,
+                            base,
                         )
                     }
                     {
@@ -1345,11 +1400,13 @@ impl Documentation {
                                 context: &e.context,
                             }).collect_vec(),
                             item_provider,
+                            base,
                         )
                     }
                 </div>
             ),
             sidebar_data,
+            base,
         )
     }
 }
@@ -1360,6 +1417,7 @@ pub fn render_from_markdown(
     markdown: &str,
     link: &str,
     item_provider: &ItemProvider,
+    base: &str,
 ) -> DOMTree<String> {
     let sections = vec![];
     let sidebar_data = SidebarData {
@@ -1374,14 +1432,15 @@ pub fn render_from_markdown(
                 <div class="doc_row">
                     <div class="doc_main">
                         <h1 class="main_heading">
-                            <a href={ link }> { text!(name) } </a>
+                            <a href={ prefix_href(base, link) }> { text!(name) } </a>
                         </h1>
                     </div>
                 </div>
                 <hr/>
-                { render_doc_comment(markdown, true, "content", item_provider, &[]) }
+                { render_doc_comment(markdown, true, "content", item_provider, &[], base) }
             </div>
         ),
         sidebar_data,
+        base,
     )
 }

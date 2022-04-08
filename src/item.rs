@@ -154,7 +154,6 @@ trait AddToItemProvider {
     );
 }
 trait AddToItemProviderWithHir {
-    #[allow(clippy::too_many_arguments)]
     fn add(
         &self,
         context: &[NameSymbol],

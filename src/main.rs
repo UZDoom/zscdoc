@@ -1,4 +1,5 @@
 #![recursion_limit = "1024"]
+#![allow(clippy::too_many_arguments)]
 
 mod item;
 mod structures;
@@ -62,6 +63,8 @@ struct Assets;
 
 #[derive(serde::Deserialize, Debug)]
 struct Config {
+    #[serde(default = "String::new")]
+    base_url: String,
     archive: Archive,
     dependency: Option<Vec<Dependency>>,
 }
@@ -118,6 +121,7 @@ fn save_docs_to_folder(
     favicon: Option<&[u8]>,
     markdown_files: &[MarkdownFileToRender],
     copy_files: &[CopyFileToRender],
+    base: &str,
 ) -> anyhow::Result<()> {
     use std::fs::*;
     use std::io::*;
@@ -153,6 +157,7 @@ fn save_docs_to_folder(
                     &m.markdown,
                     &m.output_filename,
                     item_provider,
+                    base,
                 )
             )
             .as_bytes(),
@@ -165,34 +170,50 @@ fn save_docs_to_folder(
     {
         let mut file = File::create(path.join("index.html"))?;
         file.write_all(
-            format!("<!DOCTYPE html>{}", docs.render_summary_page(item_provider)).as_bytes(),
+            format!(
+                "<!DOCTYPE html>{}",
+                docs.render_summary_page(item_provider, base)
+            )
+            .as_bytes(),
         )?;
     }
     for class in docs.classes.iter() {
         let mut file = File::create(path.join(format!("class.{}.html", class.name)))?;
         file.write_all(
-            format!("<!DOCTYPE html>{}", class.render(&docs.name, item_provider)).as_bytes(),
+            format!(
+                "<!DOCTYPE html>{}",
+                class.render(&docs.name, item_provider, base)
+            )
+            .as_bytes(),
         )?;
         for strukt in class.inner_structs.iter() {
             let mut file = File::create(path.join(format!("struct.{}.html", strukt.name)))?;
             file.write_all(
                 format!(
                     "<!DOCTYPE html>{}",
-                    strukt.render(&docs.name, item_provider)
+                    strukt.render(&docs.name, item_provider, base)
                 )
                 .as_bytes(),
             )?;
             for enm in strukt.inner_enums.iter() {
                 let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))?;
                 file.write_all(
-                    format!("<!DOCTYPE html>{}", enm.render(&docs.name, item_provider)).as_bytes(),
+                    format!(
+                        "<!DOCTYPE html>{}",
+                        enm.render(&docs.name, item_provider, base)
+                    )
+                    .as_bytes(),
                 )?;
             }
         }
         for enm in class.inner_enums.iter() {
             let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))?;
             file.write_all(
-                format!("<!DOCTYPE html>{}", enm.render(&docs.name, item_provider)).as_bytes(),
+                format!(
+                    "<!DOCTYPE html>{}",
+                    enm.render(&docs.name, item_provider, base)
+                )
+                .as_bytes(),
             )?;
         }
     }
@@ -201,21 +222,29 @@ fn save_docs_to_folder(
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
-                strukt.render(&docs.name, item_provider)
+                strukt.render(&docs.name, item_provider, base)
             )
             .as_bytes(),
         )?;
         for enm in strukt.inner_enums.iter() {
             let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))?;
             file.write_all(
-                format!("<!DOCTYPE html>{}", enm.render(&docs.name, item_provider)).as_bytes(),
+                format!(
+                    "<!DOCTYPE html>{}",
+                    enm.render(&docs.name, item_provider, base)
+                )
+                .as_bytes(),
             )?;
         }
     }
     for enm in docs.enums.iter() {
         let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))?;
         file.write_all(
-            format!("<!DOCTYPE html>{}", enm.render(&docs.name, item_provider)).as_bytes(),
+            format!(
+                "<!DOCTYPE html>{}",
+                enm.render(&docs.name, item_provider, base)
+            )
+            .as_bytes(),
         )?;
     }
     for builtin in docs.builtins.iter() {
@@ -223,7 +252,7 @@ fn save_docs_to_folder(
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
-                builtin.render(&docs.name, item_provider)
+                builtin.render(&docs.name, item_provider, base)
             )
             .as_bytes(),
         )?;
@@ -231,7 +260,7 @@ fn save_docs_to_folder(
     {
         let mut file = File::create(path.join("search.json"))?;
         file.write_all(
-            serde_json::to_string(&search::collect_search_results(docs, item_provider))
+            serde_json::to_string(&search::collect_search_results(docs, item_provider, base))
                 .unwrap()
                 .as_bytes(),
         )?;
@@ -488,6 +517,7 @@ fn main() -> anyhow::Result<()> {
             favicon,
             &markdown_files,
             &copy_files,
+            &config.base_url,
         )?;
     }
 

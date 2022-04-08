@@ -33,18 +33,19 @@ fn summarize(
     doc_comment: &str,
     item_provider: &ItemProvider,
     context: &[zscript_parser::interner::NameSymbol],
+    base: &str,
 ) -> String {
-    render_doc_summary(doc_comment, item_provider, context)
+    render_doc_summary(doc_comment, item_provider, context, base)
         .map(|x| x.to_string())
         .unwrap_or_else(|| "".to_string())
 }
 
-fn collect_class(c: &Class, res: &mut SearchResults, item_provider: &ItemProvider) {
+fn collect_class(c: &Class, res: &mut SearchResults, item_provider: &ItemProvider, base: &str) {
     res.results.push(SearchResult {
         name_prelude: "".to_string(),
         name: c.name.to_string(),
         link: format!("class.{}.html", c.name),
-        desc: summarize(&c.doc_comment, item_provider, &c.context),
+        desc: summarize(&c.doc_comment, item_provider, &c.context, base),
         kind: SearchResultKind::Class,
     });
     for co in c.constants.iter() {
@@ -52,7 +53,7 @@ fn collect_class(c: &Class, res: &mut SearchResults, item_provider: &ItemProvide
             name_prelude: format!("{}.", c.name),
             name: co.name.to_string(),
             link: format!("class.{}.html#constant.{}", c.name, co.name),
-            desc: summarize(&co.doc_comment, item_provider, &co.context),
+            desc: summarize(&co.doc_comment, item_provider, &co.context, base),
             kind: SearchResultKind::Constant,
         });
     }
@@ -62,7 +63,7 @@ fn collect_class(c: &Class, res: &mut SearchResults, item_provider: &ItemProvide
                 name_prelude: format!("{}.", c.name),
                 name: f.name.to_string(),
                 link: format!("class.{}.html#function.{}", c.name, f.name),
-                desc: summarize(&f.doc_comment, item_provider, &f.context),
+                desc: summarize(&f.doc_comment, item_provider, &f.context, base),
                 kind: SearchResultKind::Function,
             });
         }
@@ -71,17 +72,17 @@ fn collect_class(c: &Class, res: &mut SearchResults, item_provider: &ItemProvide
                 name_prelude: format!("{}.", c.name),
                 name: m.name.to_string(),
                 link: format!("class.{}.html#member.{}", c.name, m.name),
-                desc: summarize(&m.doc_comment, item_provider, &m.context),
+                desc: summarize(&m.doc_comment, item_provider, &m.context, base),
                 kind: SearchResultKind::Member,
             });
         }
     }
     for s in c.inner_structs.iter() {
-        collect_struct(s, res, item_provider);
+        collect_struct(s, res, item_provider, base);
     }
 }
 
-fn collect_struct(s: &Struct, res: &mut SearchResults, item_provider: &ItemProvider) {
+fn collect_struct(s: &Struct, res: &mut SearchResults, item_provider: &ItemProvider, base: &str) {
     let split = s.name.split('.').collect_vec();
     let (last, prelude) = split.split_last().unwrap();
     let name_prelude = if prelude.is_empty() {
@@ -95,7 +96,7 @@ fn collect_struct(s: &Struct, res: &mut SearchResults, item_provider: &ItemProvi
         name_prelude,
         name,
         link: format!("struct.{}.html", s.name),
-        desc: summarize(&s.doc_comment, item_provider, &s.context),
+        desc: summarize(&s.doc_comment, item_provider, &s.context, base),
         kind: SearchResultKind::Struct,
     });
     for co in s.constants.iter() {
@@ -103,7 +104,7 @@ fn collect_struct(s: &Struct, res: &mut SearchResults, item_provider: &ItemProvi
             name_prelude: format!("{}.", s.name),
             name: co.name.to_string(),
             link: format!("struct.{}.html#constant.{}", s.name, co.name),
-            desc: summarize(&co.doc_comment, item_provider, &co.context),
+            desc: summarize(&co.doc_comment, item_provider, &co.context, base),
             kind: SearchResultKind::Constant,
         });
     }
@@ -113,7 +114,7 @@ fn collect_struct(s: &Struct, res: &mut SearchResults, item_provider: &ItemProvi
                 name_prelude: format!("{}.", s.name),
                 name: f.name.to_string(),
                 link: format!("struct.{}.html#function.{}", s.name, s.name),
-                desc: summarize(&f.doc_comment, item_provider, &f.context),
+                desc: summarize(&f.doc_comment, item_provider, &f.context, base),
                 kind: SearchResultKind::Function,
             });
         }
@@ -122,17 +123,17 @@ fn collect_struct(s: &Struct, res: &mut SearchResults, item_provider: &ItemProvi
                 name_prelude: format!("{}.", s.name),
                 name: m.name.to_string(),
                 link: format!("struct.{}.html#member.{}", s.name, m.name),
-                desc: summarize(&m.doc_comment, item_provider, &m.context),
+                desc: summarize(&m.doc_comment, item_provider, &m.context, base),
                 kind: SearchResultKind::Member,
             });
         }
     }
     for e in s.inner_enums.iter() {
-        collect_enum(e, res, item_provider);
+        collect_enum(e, res, item_provider, base);
     }
 }
 
-fn collect_builtin(b: &Builtin, res: &mut SearchResults, item_provider: &ItemProvider) {
+fn collect_builtin(b: &Builtin, res: &mut SearchResults, item_provider: &ItemProvider, base: &str) {
     let split = b.name.split('.').collect_vec();
     let (last, prelude) = split.split_last().unwrap();
     let name_prelude = if prelude.is_empty() {
@@ -146,7 +147,7 @@ fn collect_builtin(b: &Builtin, res: &mut SearchResults, item_provider: &ItemPro
         name_prelude,
         name,
         link: format!("builtin.{}.html", b.name),
-        desc: summarize(&b.doc_comment, item_provider, &b.context),
+        desc: summarize(&b.doc_comment, item_provider, &b.context, base),
         kind: SearchResultKind::Builtin,
     });
     for co in b.constants.iter() {
@@ -154,7 +155,7 @@ fn collect_builtin(b: &Builtin, res: &mut SearchResults, item_provider: &ItemPro
             name_prelude: format!("{}.", b.name),
             name: co.name.to_string(),
             link: format!("builtin.{}.html#constant.{}", b.name, co.name),
-            desc: summarize(&co.doc_comment, item_provider, &co.context),
+            desc: summarize(&co.doc_comment, item_provider, &co.context, base),
             kind: SearchResultKind::Constant,
         });
     }
@@ -163,7 +164,7 @@ fn collect_builtin(b: &Builtin, res: &mut SearchResults, item_provider: &ItemPro
             name_prelude: format!("{}.", b.name),
             name: f.name.to_string(),
             link: format!("builtin.{}.html#function.{}", b.name, b.name),
-            desc: summarize(&f.doc_comment, item_provider, &f.context),
+            desc: summarize(&f.doc_comment, item_provider, &f.context, base),
             kind: SearchResultKind::Function,
         });
     }
@@ -172,13 +173,13 @@ fn collect_builtin(b: &Builtin, res: &mut SearchResults, item_provider: &ItemPro
             name_prelude: format!("{}.", b.name),
             name: m.name.to_string(),
             link: format!("builtin.{}.html#member.{}", b.name, m.name),
-            desc: summarize(&m.doc_comment, item_provider, &m.context),
+            desc: summarize(&m.doc_comment, item_provider, &m.context, base),
             kind: SearchResultKind::Member,
         });
     }
 }
 
-fn collect_enum(e: &Enum, res: &mut SearchResults, item_provider: &ItemProvider) {
+fn collect_enum(e: &Enum, res: &mut SearchResults, item_provider: &ItemProvider, base: &str) {
     let split = e.name.split('.').collect_vec();
     let (last, prelude) = split.split_last().unwrap();
     let name_prelude = if prelude.is_empty() {
@@ -192,7 +193,7 @@ fn collect_enum(e: &Enum, res: &mut SearchResults, item_provider: &ItemProvider)
         name_prelude,
         name,
         link: format!("enum.{}.html", e.name),
-        desc: summarize(&e.doc_comment, item_provider, &e.context),
+        desc: summarize(&e.doc_comment, item_provider, &e.context, base),
         kind: SearchResultKind::Enum,
     });
     for en in e.enumerators.iter() {
@@ -200,34 +201,38 @@ fn collect_enum(e: &Enum, res: &mut SearchResults, item_provider: &ItemProvider)
             name_prelude: format!("{}.", e.name),
             name: en.name.to_string(),
             link: format!("enum.{}.html#enumerator.{}", e.name, en.name),
-            desc: summarize(&en.doc_comment, item_provider, &en.context),
+            desc: summarize(&en.doc_comment, item_provider, &en.context, base),
             kind: SearchResultKind::Enumerator,
         });
     }
 }
 
-pub fn collect_search_results(docs: &Documentation, item_provider: &ItemProvider) -> SearchResults {
+pub fn collect_search_results(
+    docs: &Documentation,
+    item_provider: &ItemProvider,
+    base: &str,
+) -> SearchResults {
     let mut res = SearchResults { results: vec![] };
     for c in docs.constants.iter() {
         res.results.push(SearchResult {
             name_prelude: "".to_string(),
             name: c.name.to_string(),
             link: format!("index.html#constant.{}", c.name),
-            desc: summarize(&c.doc_comment, &item_provider, &c.context),
+            desc: summarize(&c.doc_comment, &item_provider, &c.context, base),
             kind: SearchResultKind::Constant,
         });
     }
     for c in docs.classes.iter() {
-        collect_class(c, &mut res, item_provider);
+        collect_class(c, &mut res, item_provider, base);
     }
     for s in docs.structs.iter() {
-        collect_struct(s, &mut res, item_provider);
+        collect_struct(s, &mut res, item_provider, base);
     }
     for e in docs.enums.iter() {
-        collect_enum(e, &mut res, item_provider);
+        collect_enum(e, &mut res, item_provider, base);
     }
     for b in docs.builtins.iter() {
-        collect_builtin(b, &mut res, item_provider);
+        collect_builtin(b, &mut res, item_provider, base);
     }
     res
 }
