@@ -49,6 +49,9 @@ struct Args {
         help = "Deletes the target folder without confirmation. Best kept off in most cases."
     )]
     delete_without_confirm: bool,
+
+    #[clap(long, help = "The base for URLs in links in the documentation")]
+    base_url: Option<String>,
 }
 
 #[cfg(not(debug_assertions))]
@@ -502,6 +505,8 @@ fn main() -> anyhow::Result<()> {
         builtins,
     );
 
+    let base_url = args.base_url.unwrap_or(config.base_url);
+
     if let Some(c) = args.coverage {
         let breakdown = coverage_breakdown(
             docs.coverage(&config.archive.nice_name, &files)
@@ -517,7 +522,7 @@ fn main() -> anyhow::Result<()> {
             favicon,
             &markdown_files,
             &copy_files,
-            &config.base_url,
+            &base_url,
         )?;
     }
 
