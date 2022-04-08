@@ -1432,7 +1432,7 @@ pub fn render_from_markdown(
                 <div class="doc_row">
                     <div class="doc_main">
                         <h1 class="main_heading">
-                            <a href={ prefix_href(base, link) }> { text!(name) } </a>
+                            <a href={ prefix_href(base, &format!("/{}", link)) }> { text!(name) } </a>
                         </h1>
                     </div>
                 </div>
