@@ -93,9 +93,10 @@ thead {
 
 %doc_comment_common {
   margin-left: 20px;
-  code,
-  pre {
+  code, pre {
     background-color: $doc_code_bg;
+  }
+  pre code {
     white-space: pre;
   }
   pre {
