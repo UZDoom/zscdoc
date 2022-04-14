@@ -168,10 +168,10 @@ macro_rules! cov_field {
 impl Class {
     pub fn coverage<'a>(
         &'a self,
-        context: &[String],
+        _context: &[String],
         files: &'a Files,
     ) -> impl Iterator<Item = CoverageItem> + 'a {
-        let context = context_with(context, &self.name);
+        let context = self.name.split('.').map(|x| x.to_string()).collect_vec();
         Some(CoverageItem {
             covered: !self.doc_comment.is_empty(),
             kind: CoverageKind::Class,
@@ -181,7 +181,7 @@ impl Class {
         .into_iter()
         .chain(cov_field!(self.public.variables, context, files))
         .chain(cov_field!(self.public.functions, context, files))
-        .chain(cov_field!(self.protected.functions, context, files))
+        .chain(cov_field!(self.protected.variables, context, files))
         .chain(cov_field!(self.protected.functions, context, files))
         .chain(cov_field!(self.inner_structs, context, files))
         .chain(cov_field!(self.inner_enums, context, files))
@@ -194,10 +194,10 @@ impl Class {
 impl Struct {
     pub fn coverage<'a>(
         &'a self,
-        context: &[String],
+        _context: &[String],
         files: &'a Files,
     ) -> impl Iterator<Item = CoverageItem> + 'a {
-        let context = context_with(context, &self.name);
+        let context = self.name.split('.').map(|x| x.to_string()).collect_vec();
         Some(CoverageItem {
             covered: !self.doc_comment.is_empty(),
             kind: CoverageKind::Struct,
@@ -217,10 +217,10 @@ impl Struct {
 impl Enum {
     pub fn coverage<'a>(
         &'a self,
-        context: &[String],
+        _context: &[String],
         files: &'a Files,
     ) -> impl Iterator<Item = CoverageItem> + 'a {
-        let context = context_with(context, &self.name);
+        let context = self.name.split('.').map(|x| x.to_string()).collect_vec();
         Some(CoverageItem {
             covered: !self.doc_comment.is_empty(),
             kind: CoverageKind::Enum,
