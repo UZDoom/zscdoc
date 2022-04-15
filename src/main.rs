@@ -5,17 +5,17 @@ mod item;
 mod structures;
 
 mod builtin;
+mod cli;
 mod coverage;
 mod document;
 mod render;
 mod search;
 
 use crate::{
-    builtin::BuiltinTypeFromFile, coverage::coverage_breakdown, item::ItemProvider,
+    builtin::BuiltinTypeFromFile, cli::*, coverage::coverage_breakdown, item::ItemProvider,
     render::render_from_markdown,
 };
-use clap::{ArgGroup, Parser};
-use coverage::CoverageLevel;
+use clap::Parser;
 use itertools::Itertools;
 use zscript_parser::{
     err::ToDisplayedErrors,
@@ -25,34 +25,6 @@ use zscript_parser::{
 };
 
 use crate::item::ToItemProvider;
-
-#[derive(Parser, Debug)]
-#[clap(author, version, about = "zscript documentation generator", long_about = None)]
-#[clap(group(ArgGroup::new("mode").required(true)))]
-struct Args {
-    #[clap(short, long, help = "Path to the folder to document")]
-    folder: String,
-
-    #[clap(short, long, help = "Path for the output folder", group = "mode")]
-    output: Option<String>,
-
-    #[clap(
-        long,
-        arg_enum,
-        help = "Shows the doc coverage in one of a few formats",
-        group = "mode"
-    )]
-    coverage: Option<CoverageLevel>,
-
-    #[clap(
-        long,
-        help = "Deletes the target folder without confirmation. Best kept off in most cases."
-    )]
-    delete_without_confirm: bool,
-
-    #[clap(long, help = "The base for URLs in links in the documentation")]
-    base_url: Option<String>,
-}
 
 #[cfg(not(debug_assertions))]
 #[derive(rust_embed::RustEmbed)]

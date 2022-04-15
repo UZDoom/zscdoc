@@ -1,7 +1,8 @@
 use crate::structures::*;
-use clap::ArgEnum;
 use itertools::Itertools;
 use zscript_parser::filesystem::Files;
+
+pub use crate::cli::CoverageLevel;
 
 #[derive(Debug, Clone)]
 pub enum CoverageKind {
@@ -31,13 +32,6 @@ pub struct CoverageBreakdown {
     pub proportion: f32,
     pub all: Vec<CoverageItem>,
     pub not_covered: Vec<CoverageItem>,
-}
-
-#[derive(ArgEnum, Debug, Clone, Copy)]
-pub enum CoverageLevel {
-    Percentage,
-    Breakdown,
-    Verbose,
 }
 
 impl CoverageBreakdown {
