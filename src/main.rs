@@ -8,6 +8,7 @@ mod builtin;
 mod cli;
 mod coverage;
 mod document;
+mod git;
 mod render;
 mod search;
 
@@ -43,8 +44,23 @@ struct Config {
 }
 
 #[derive(serde::Deserialize, Debug)]
+#[serde(untagged)]
+enum DependencyPathKind {
+    Path {
+        path: String,
+    },
+    Git {
+        git: String,
+        refname: String,
+        #[serde(default = "String::new")]
+        base: String,
+    },
+}
+
+#[derive(serde::Deserialize, Debug)]
 struct Dependency {
-    path: String,
+    #[serde(flatten)]
+    find_at: DependencyPathKind,
     url: String,
 }
 
@@ -323,10 +339,21 @@ fn collect_dependencies(
         base_path: &std::path::Path,
     ) -> anyhow::Result<()> {
         for d in dependencies.iter() {
-            let dep_path = base_path.join(&d.path);
+            let dep_path = match &d.find_at {
+                DependencyPathKind::Path { path } => base_path.join(&path),
+                DependencyPathKind::Git { git, refname, base } => {
+                    println!(
+                        "Cloning git repository for dependency: {}, ref {}",
+                        git, refname
+                    );
+                    git::clone_git(git, refname)
+                        .context("git cloning failed")?
+                        .join(base)
+                }
+            };
             let dep_path_str = dep_path.to_str().context("paths must be UTF-8")?;
-            let (filesystem, config, builtin_files) =
-                get_filesystem(dep_path_str).context(format!("loading dependency {}", d.path))?;
+            let (filesystem, config, builtin_files) = get_filesystem(dep_path_str)
+                .context(format!("loading dependency path {:?}", dep_path))?;
             if seen.contains(&config.archive.nice_name) {
                 continue;
             }

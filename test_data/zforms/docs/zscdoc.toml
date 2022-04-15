@@ -7,5 +7,7 @@ filename = "test.md"
 title = "test"
 
 [[dependency]]
-path = "../gzdoom_pk3"
+git = "https://github.com/Gutawer/gzdoom"
+refname = "origin/documented"
+base = "wadsrc/static"
 url = "http://localhost:8081"
