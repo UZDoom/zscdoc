@@ -38,8 +38,6 @@ struct Assets;
 
 #[derive(serde::Deserialize, Debug)]
 struct Config {
-    #[serde(default = "String::new")]
-    base_url: String,
     archive: Archive,
     dependency: Option<Vec<Dependency>>,
 }
@@ -64,6 +62,8 @@ struct Archive {
     copy_files: Option<Vec<CopyFile>>,
     #[serde(alias = "builtin")]
     builtins: Option<Vec<String>>,
+    #[serde(default = "String::new")]
+    base_url: String,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -488,7 +488,7 @@ fn main() -> anyhow::Result<()> {
         builtins,
     );
 
-    let base_url = args.base_url.unwrap_or(config.base_url);
+    let base_url = args.base_url.unwrap_or(config.archive.base_url);
 
     if let Some(c) = args.coverage {
         let breakdown = coverage_breakdown(
