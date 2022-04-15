@@ -71,7 +71,7 @@ pub fn main() {
 
     check_output(
         std::process::Command::new("npm")
-            .args(["install"])
+            .args(["ci"])
             .output()
             .expect("expected to install packages"),
     );

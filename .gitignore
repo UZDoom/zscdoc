@@ -3,5 +3,6 @@
 /test_data/gzdoom_docs
 /zforms_base.zsc
 /copy_zforms.sh
+/PKGBUILD
 /target
 /web_stuff/node_modules

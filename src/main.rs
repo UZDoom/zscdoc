@@ -310,24 +310,30 @@ struct CollectedDependency {
     builtins: Vec<BuiltinTypeFromFile>,
 }
 
-fn collect_dependencies(dependencies: &[Dependency]) -> anyhow::Result<Vec<CollectedDependency>> {
+fn collect_dependencies(
+    dependencies: &[Dependency],
+    base_path: &str,
+) -> anyhow::Result<Vec<CollectedDependency>> {
     use anyhow::Context;
     use std::collections::HashSet;
     fn recurse(
         dependencies: &[Dependency],
         ret: &mut Vec<CollectedDependency>,
         seen: &mut HashSet<String>,
+        base_path: &std::path::Path,
     ) -> anyhow::Result<()> {
         for d in dependencies.iter() {
+            let dep_path = base_path.join(&d.path);
+            let dep_path_str = dep_path.to_str().context("paths must be UTF-8")?;
             let (filesystem, config, builtin_files) =
-                get_filesystem(&d.path).context(format!("loading dependency {}", d.path))?;
+                get_filesystem(dep_path_str).context(format!("loading dependency {}", d.path))?;
             if seen.contains(&config.archive.nice_name) {
                 continue;
             }
             seen.insert(config.archive.nice_name.to_string());
 
             let dependencies = option_slice_to_slice(config.dependency.as_deref());
-            recurse(dependencies, ret, seen)?;
+            recurse(dependencies, ret, seen, &dep_path)?;
             let builtins = get_builtins(&builtin_files)?.collect_vec();
             ret.push(CollectedDependency {
                 filesystem,
@@ -341,7 +347,12 @@ fn collect_dependencies(dependencies: &[Dependency]) -> anyhow::Result<Vec<Colle
     }
 
     let mut ret = vec![];
-    recurse(dependencies, &mut ret, &mut HashSet::new())?;
+    recurse(
+        dependencies,
+        &mut ret,
+        &mut HashSet::new(),
+        std::path::Path::new(base_path),
+    )?;
     Ok(ret)
 }
 
@@ -400,7 +411,7 @@ fn main() -> anyhow::Result<()> {
         .collect();
     let copy_files = copy_files?;
 
-    let depedencies = collect_dependencies(&option_vec_to_vec(config.dependency))?;
+    let depedencies = collect_dependencies(&option_vec_to_vec(config.dependency), &args.folder)?;
 
     let mut errs = vec![];
 

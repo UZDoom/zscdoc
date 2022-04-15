@@ -7,5 +7,5 @@ filename = "test.md"
 title = "test"
 
 [[dependency]]
-path = "test_data/gzdoom_pk3"
+path = "../gzdoom_pk3"
 url = "http://localhost:8081"
