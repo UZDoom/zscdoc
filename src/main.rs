@@ -342,8 +342,8 @@ fn collect_dependencies(
             let dep_path = match &d.find_at {
                 DependencyPathKind::Path { path } => base_path.join(&path),
                 DependencyPathKind::Git { git, refname, base } => {
-                    println!(
-                        "Cloning git repository for dependency: {}, ref {}",
+                    eprintln!(
+                        "Cloning git repository for dependency: {}, ref {}...",
                         git, refname
                     );
                     git::clone_git(git, refname)
@@ -442,6 +442,7 @@ fn main() -> anyhow::Result<()> {
 
     let mut errs = vec![];
 
+    eprintln!("Parsing ZScript code...");
     let (mut parsed_vec, dependency_links, mut builtins): (Vec<_>, Vec<_>, Vec<_>) =
         itertools::multiunzip(depedencies.into_iter().map(|d| {
             let CollectedDependency {
@@ -505,6 +506,7 @@ fn main() -> anyhow::Result<()> {
         .map(|b| b.produce(&mut files, &item_provider))
         .collect_vec();
 
+    eprintln!("Generating documentation structures...");
     let docs = document::hir_to_doc_structures(
         summary_doc,
         &config.archive.nice_name,
@@ -524,8 +526,9 @@ fn main() -> anyhow::Result<()> {
         );
         breakdown.show(c);
     } else {
+        let out = args.output.unwrap();
         save_docs_to_folder(
-            &args.output.unwrap(),
+            &out,
             &docs,
             args.delete_without_confirm,
             &item_provider,
@@ -534,6 +537,7 @@ fn main() -> anyhow::Result<()> {
             &copy_files,
             &base_url,
         )?;
+        eprintln!("Documentation written to {}!", out);
     }
 
     Ok(())

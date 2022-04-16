@@ -7,7 +7,7 @@ filename = "test.md"
 title = "test"
 
 [[dependency]]
-git = "https://github.com/Gutawer/gzdoom"
-refname = "origin/documented"
+git = "https://gitlab.com/Gutawer/gzdoom_pk3_doc.git"
+refname = "origin/main"
 base = "wadsrc/static"
 url = "http://localhost:8081"

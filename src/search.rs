@@ -218,7 +218,7 @@ pub fn collect_search_results(
             name_prelude: "".to_string(),
             name: c.name.to_string(),
             link: format!("index.html#constant.{}", c.name),
-            desc: summarize(&c.doc_comment, &item_provider, &c.context, base),
+            desc: summarize(&c.doc_comment, item_provider, &c.context, base),
             kind: SearchResultKind::Constant,
         });
     }

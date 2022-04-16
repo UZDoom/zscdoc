@@ -1,14 +1,63 @@
-use std::path::{Path, PathBuf};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use anyhow::Context;
+use crossterm::{
+    terminal::{Clear, ClearType},
+    ExecutableCommand,
+};
 use directories::ProjectDirs;
-use git2::Repository;
+use git2::{FetchOptions, RemoteCallbacks, Repository};
 use sha2::{Digest, Sha256};
 
-fn change_head_in<P: AsRef<Path>>(path: P, refname: &str) -> anyhow::Result<()> {
+fn change_head_in<P: AsRef<Path>>(url: &str, path: P, refname: &str) -> anyhow::Result<()> {
     let repo = Repository::open(path)?;
+
+    repo.remote_set_url("origin", url)?;
+    repo.remote_add_fetch("origin", "+refs/heads/*:refs/remotes/origin/*")?;
+
+    let mut remote = repo.find_remote("origin")?;
+    let mut cb = RemoteCallbacks::new();
+
+    let mut cleared = false;
+    cb.transfer_progress(move |stats| {
+        if stats.received_objects() == stats.total_objects() {
+            if !cleared {
+                std::io::stderr()
+                    .execute(Clear(ClearType::CurrentLine))
+                    .unwrap();
+                cleared = true;
+            }
+            eprint!(
+                "Resolving deltas {}/{}\r",
+                stats.indexed_deltas(),
+                stats.total_deltas()
+            );
+        } else if stats.total_objects() > 0 {
+            eprint!(
+                "Received {}/{} objects ({}) in {} bytes\r",
+                stats.received_objects(),
+                stats.total_objects(),
+                stats.indexed_objects(),
+                stats.received_bytes()
+            );
+        }
+        std::io::stderr().flush().unwrap();
+        true
+    });
+
+    let mut fo = FetchOptions::new();
+    fo.remote_callbacks(cb);
+    remote.fetch(&[] as &[&str], Some(&mut fo), None)?;
+    std::io::stderr()
+        .execute(Clear(ClearType::CurrentLine))
+        .unwrap();
+
     let (object, reference) = repo.revparse_ext(refname)?;
 
+    repo.checkout_tree(&object, None)?;
     repo.reset(&object, git2::ResetType::Hard, None)?;
 
     match reference {
@@ -37,7 +86,7 @@ pub fn clone_git(repo: &str, refname: &str) -> anyhow::Result<PathBuf> {
         let repo_hash = repo_name_hasher.finalize();
         let path = cache_dir.join("checkouts").join(format!("{:x}", repo_hash));
         if path.exists() {
-            match change_head_in(&path, refname) {
+            match change_head_in(repo, &path, refname) {
                 Ok(()) => {
                     return Ok(path);
                 }
@@ -46,8 +95,8 @@ pub fn clone_git(repo: &str, refname: &str) -> anyhow::Result<PathBuf> {
                 }
             };
         }
-        Repository::clone(repo, &path)?;
-        change_head_in(&path, refname)?;
+        Repository::init(&path)?;
+        change_head_in(repo, &path, refname)?;
         Ok(path)
     } else {
         anyhow::bail!("Couldn't get a cache directory");
