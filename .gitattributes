@@ -1,1 +1,3 @@
-test_data/* linguist-vendored
+test_data/* linguist-detectable=false
+*.zs  linguist-language=ZScript linguist-detectable
+*.zsc linguist-language=ZScript linguist-detectable
