@@ -1779,9 +1779,9 @@ dependencies = [
 
 [[package]]
 name = "zscript_parser"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfdd9d54ff4fa10cf5682425b1d52e08b0e152ceb48745f8d69f4f46fcf21cf6"
+checksum = "84aee1612bf2438a93a6eab3d98bae142daaed02467d75772a1ff73ca1b58ea9"
 dependencies = [
  "bitflags",
  "once_cell",

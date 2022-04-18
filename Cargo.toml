@@ -14,7 +14,7 @@ clap = { version = "3.1.1", features = ["derive"] }
 itertools = "0.10.3"
 typed-html = { git = "https://github.com/bodil/typed-html", rev = "e18d328951b6b9216976d180f3dea2e6600a3982" }
 rust-embed = { version = "6.3.0", features = ["compression", "interpolate-folder-path"] }
-zscript_parser = { version = "0.1.0", features = ["multithreaded", "gzd_folder_filesystem"] }
+zscript_parser = { version = "0.2.0", features = ["multithreaded", "gzd_folder_filesystem"] }
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.79"
 pulldown-cmark = "0.9.1"
