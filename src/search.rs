@@ -113,7 +113,7 @@ fn collect_struct(s: &Struct, res: &mut SearchResults, item_provider: &ItemProvi
             res.results.push(SearchResult {
                 name_prelude: format!("{}.", s.name),
                 name: f.name.to_string(),
-                link: format!("struct.{}.html#function.{}", s.name, s.name),
+                link: format!("struct.{}.html#function.{}", s.name, f.name),
                 desc: summarize(&f.doc_comment, item_provider, &f.context, base),
                 kind: SearchResultKind::Function,
             });
