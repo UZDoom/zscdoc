@@ -37,7 +37,7 @@ fn summarize(
 ) -> String {
     render_doc_summary(doc_comment, item_provider, context, base)
         .map(|x| x.to_string())
-        .unwrap_or_else(|| "".to_string())
+        .unwrap_or_default()
 }
 
 fn collect_class(c: &Class, res: &mut SearchResults, item_provider: &ItemProvider, base: &str) {

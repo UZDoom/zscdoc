@@ -156,7 +156,7 @@ fn save_docs_to_folder(
     }
     for asset_path in Assets::iter() {
         let mut file = File::create(path.join(&*asset_path))?;
-        file.write_all(&Assets::get(&*asset_path).unwrap().data)?;
+        file.write_all(&Assets::get(&asset_path).unwrap().data)?;
     }
     {
         let mut file = File::create(path.join("index.html"))?;
@@ -340,7 +340,7 @@ fn collect_dependencies(
     ) -> anyhow::Result<()> {
         for d in dependencies.iter() {
             let dep_path = match &d.find_at {
-                DependencyPathKind::Path { path } => base_path.join(&path),
+                DependencyPathKind::Path { path } => base_path.join(path),
                 DependencyPathKind::Git { git, refname, base } => {
                     eprintln!(
                         "Cloning git repository for dependency: {}, ref {}...",

@@ -90,6 +90,10 @@ impl BuiltinTypeFromFile {
     }
 }
 
+// clippy complains about the return type complexity here - in principle I agree with it
+// but i can really not be bothered right now to work out how to refactor a type
+// containing a deeply nested `impl Fn`
+#[allow(clippy::type_complexity)]
 fn parse_inner<T>(
     file_index: FileIndex,
     def: &str,
@@ -289,7 +293,7 @@ impl MemberVariableHir {
                 .def
                 .doc_comment
                 .map(|s| s.string().to_string())
-                .unwrap_or_else(|| "".to_string()),
+                .unwrap_or_default(),
             def: crate::document::reconstruct_member_declaration(
                 Owner::Global,
                 &self.def,
@@ -322,7 +326,7 @@ impl FunctionHir {
                 .def
                 .doc_comment
                 .map(|s| s.string().to_string())
-                .unwrap_or_else(|| "".to_string()),
+                .unwrap_or_default(),
             signature: crate::document::reconstruct_function_signature(
                 Owner::Global,
                 &self.def,
@@ -356,7 +360,7 @@ impl ConstantHir {
                 .def
                 .doc_comment
                 .map(|s| s.string().to_string())
-                .unwrap_or_else(|| "".to_string()),
+                .unwrap_or_default(),
             def: crate::document::reconstruct_constant_declaration(
                 Owner::Global,
                 &self.def,

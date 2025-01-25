@@ -128,7 +128,7 @@ fn add_type_to_source(
         hir::Type::SingleUserType(id) => {
             add_type_if_possible(
                 files.text_from_span(id.span),
-                &[*id],
+                [*id],
                 item_provider,
                 context,
                 true,
@@ -149,7 +149,7 @@ fn add_type_to_source(
             source.add_no_link("@");
             add_type_if_possible(
                 files.text_from_span(id.span),
-                &[*id],
+                [*id],
                 item_provider,
                 context,
                 true,
@@ -160,7 +160,7 @@ fn add_type_to_source(
             source.add_no_link("ReadOnly< ");
             add_type_if_possible(
                 files.text_from_span(id.span),
-                &[*id],
+                [*id],
                 item_provider,
                 context,
                 true,
@@ -172,7 +172,7 @@ fn add_type_to_source(
             source.add_no_link("ReadOnly< @");
             add_type_if_possible(
                 files.text_from_span(id.span),
-                &[*id],
+                [*id],
                 item_provider,
                 context,
                 true,
@@ -228,7 +228,7 @@ fn add_type_to_source(
             // recursive definition
             // unfortunately that makes extracting back out the annoying C syntax messy
             let mut cty = &**initial_cty;
-            let mut size = &*initial_size;
+            let mut size = initial_size;
             loop {
                 sizes.push(size);
                 if let hir::Type::Array(new_cty, new_size) = cty {
@@ -282,7 +282,9 @@ fn add_type_to_source(
                 }
                 source.add_no_link("(");
                 match &f.params.kind {
-                    hir::FuncPtrParamsKind::Void => { source.add_no_link("void"); }
+                    hir::FuncPtrParamsKind::Void => {
+                        source.add_no_link("void");
+                    }
                     hir::FuncPtrParamsKind::List(params) => {
                         let mut first = true;
                         for p in params {
@@ -307,7 +309,7 @@ fn add_type_to_source(
                             }
                             add_type_to_source(&p.ty, item_provider, context, source, files);
                         }
-                    },
+                    }
                 }
                 source.add_no_link(")>");
             }
@@ -597,7 +599,7 @@ pub fn transform_deprecated(d: &hir::Deprecated) -> Deprecated {
         reason: d
             .message
             .map(|s| s.symbol.string().to_string())
-            .unwrap_or_else(|| "".to_string()),
+            .unwrap_or_default(),
     }
 }
 
@@ -645,7 +647,7 @@ fn class_doc(
         doc_comment: c
             .doc_comment
             .map(|s| s.string().to_string())
-            .unwrap_or_else(|| "".to_string()),
+            .unwrap_or_default(),
         overrides: vec![],
         public: VariablesAndFunctions::default(),
         protected: VariablesAndFunctions::default(),
@@ -902,7 +904,7 @@ fn struct_doc(
         doc_comment: s
             .doc_comment
             .map(|s| s.string().to_string())
-            .unwrap_or_else(|| "".to_string()),
+            .unwrap_or_default(),
         public: VariablesAndFunctions::default(),
         protected: VariablesAndFunctions::default(),
         private: VariablesAndFunctions::default(),
@@ -1055,7 +1057,7 @@ fn enum_doc(
         doc_comment: e
             .doc_comment
             .map(|s| s.string().to_string())
-            .unwrap_or_else(|| "".to_string()),
+            .unwrap_or_default(),
         enumerators: vec![],
     };
     for i in e.variants.iter() {
