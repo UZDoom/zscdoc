@@ -13,6 +13,8 @@ use git2::{FetchOptions, RemoteCallbacks, Repository};
 use sha2::{Digest, Sha256};
 
 fn change_head_in<P: AsRef<Path>>(url: &str, path: P, refname: &str) -> anyhow::Result<()> {
+    use std::io::IsTerminal;
+
     let repo = Repository::open(path)?;
 
     repo.remote_set_url("origin", url)?;
@@ -23,6 +25,10 @@ fn change_head_in<P: AsRef<Path>>(url: &str, path: P, refname: &str) -> anyhow::
 
     let mut cleared = false;
     cb.transfer_progress(move |stats| {
+        if !std::io::stdout().is_terminal() {
+            std::io::stderr().flush().unwrap();
+            return true;
+        }
         if stats.received_objects() == stats.total_objects() {
             if !cleared {
                 std::io::stderr()
