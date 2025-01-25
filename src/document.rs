@@ -214,6 +214,14 @@ fn add_type_to_source(
             add_type_to_source(v, item_provider, context, source, files);
             source.add_no_link(" >");
         }
+        hir::Type::MapIterator(b) => {
+            let (k, v) = &**b;
+            source.add_no_link("MapIterator< ");
+            add_type_to_source(k, item_provider, context, source, files);
+            source.add_no_link(", ");
+            add_type_to_source(v, item_provider, context, source, files);
+            source.add_no_link(" >");
+        }
         hir::Type::Array(initial_cty, initial_size) => {
             let mut sizes = vec![];
             // this is a mess because while creating HIR the parser makes arrays into a more useful
@@ -245,6 +253,65 @@ fn add_type_to_source(
             add_type_to_source(d, item_provider, context, source, files);
             source.add_no_link(" >");
         }
+        hir::Type::FuncPtr(p) => match p {
+            hir::FuncPtrKind::Void => {
+                source.add_no_link("Function<void>");
+            }
+            hir::FuncPtrKind::Detailed(f) => {
+                source.add_no_link("Function<");
+                source.add_no_link(match f.flag {
+                    hir::FuncPtrFlag::Ui => "ui ",
+                    hir::FuncPtrFlag::Play => "play ",
+                    hir::FuncPtrFlag::ClearScope => "clearscope ",
+                });
+                match &f.return_types.kind {
+                    hir::TypeListOrVoidKind::TypeList(l) => {
+                        let mut first = true;
+                        for ty in l {
+                            if !first {
+                                source.add_no_link(", ");
+                            }
+                            first = false;
+                            add_type_to_source(ty, item_provider, context, source, files);
+                        }
+                        source.add_no_link(" ");
+                    }
+                    hir::TypeListOrVoidKind::Void => {
+                        source.add_no_link("void ");
+                    }
+                }
+                source.add_no_link("(");
+                match &f.params.kind {
+                    hir::FuncPtrParamsKind::Void => { source.add_no_link("void"); }
+                    hir::FuncPtrParamsKind::List(params) => {
+                        let mut first = true;
+                        for p in params {
+                            if !first {
+                                source.add_no_link(", ");
+                            }
+                            first = false;
+                            for f in [
+                                hir::FuncParamFlags::IN,
+                                hir::FuncParamFlags::OUT,
+                                hir::FuncParamFlags::OPTIONAL,
+                            ] {
+                                if p.flags.contains(f) {
+                                    source.add_no_link(match f {
+                                        hir::FuncParamFlags::IN => "in",
+                                        hir::FuncParamFlags::OUT => "out",
+                                        hir::FuncParamFlags::OPTIONAL => "optional",
+                                        _ => unreachable!(),
+                                    });
+                                    source.add_no_link(" ");
+                                }
+                            }
+                            add_type_to_source(&p.ty, item_provider, context, source, files);
+                        }
+                    },
+                }
+                source.add_no_link(")>");
+            }
+        },
         hir::Type::Let => {
             source.add_no_link("let");
         }

@@ -14,14 +14,14 @@ clap = { version = "3.1.1", features = ["derive"] }
 itertools = "0.10.3"
 typed-html = { git = "https://github.com/bodil/typed-html", rev = "e18d328951b6b9216976d180f3dea2e6600a3982" }
 rust-embed = { version = "6.8.1", features = ["interpolate-folder-path"] }
-zscript_parser = { version = "0.2.0", features = ["multithreaded", "gzd_folder_filesystem"] }
+zscript_parser = { git = "https://gitlab.com/Gutawer/zscript_parser", features = ["multithreaded", "gzd_folder_filesystem"] }
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.79"
 pulldown-cmark = "0.9.1"
 textwrap = "0.14.2"
 toml = "0.5.8"
 vec1 = "1.8.0"
-prettytable-rs = { version = "0.8.0", default-features = false, features = ["win_crlf"] }
+prettytable-rs = { version = "0.10.0", default-features = false, features = ["win_crlf"] }
 git2 = "0.14.2"
 sha2 = "0.10.2"
 directories = "4.0.1"
