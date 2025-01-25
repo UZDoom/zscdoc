@@ -4,8 +4,11 @@ include!("src/cli.rs");
 
 fn check_output(o: std::process::Output) {
     if !o.status.success() {
+        if let Ok(s) = String::from_utf8(o.stderr) {
+            eprintln!("subprocess stderr\n---\n{}", s);
+        }
         if let Ok(s) = String::from_utf8(o.stdout) {
-            eprintln!("{}", s);
+            eprintln!("subprocess stdout\n---\n{}", s);
         }
         panic!("Command failed");
     }
@@ -41,6 +44,7 @@ pub fn main() {
     println!("cargo:rerun-if-changed=web_stuff/package.json");
     println!("cargo:rerun-if-changed=web_stuff/tsconfig.json");
     println!("cargo:rerun-if-changed=web_stuff/webpack.config.js");
+    println!("cargo:rerun-if-env-changed=WEB_STUFF_DIST_FOLDER");
 
     generate_shell_completion();
 
@@ -49,6 +53,15 @@ pub fn main() {
     let out = std::env::var_os("OUT_DIR").unwrap();
     let out = std::path::Path::new(&out);
     let dest = out.join("web_stuff");
+
+    if let Some(web_stuff) = std::env::var_os("WEB_STUFF_DIST_FOLDER") {
+        let dist_out = dest.join("dist");
+        eprintln!("Copying `{web_stuff:?}` to `{dist_out:?}`");
+        fs_extra::dir::create_all(&dist_out, true).expect("expected to create dir");
+        fs_extra::dir::copy(web_stuff, dist_out, &dir_options)
+            .expect("expected to copy web_stuff dist dir");
+        return;
+    }
 
     fs_extra::dir::create_all(&dest, true).expect("expected to create dir");
     fs_extra::copy_items(
@@ -69,6 +82,7 @@ pub fn main() {
 
     eprintln!("dest: {:?}", dest);
 
+    eprintln!("Installing...");
     check_output(
         std::process::Command::new("npm")
             .args(["ci"])
@@ -76,6 +90,7 @@ pub fn main() {
             .expect("expected to install packages"),
     );
 
+    eprintln!("Building...");
     check_output(
         std::process::Command::new("npm")
             .args(["--production", "run", "build"])

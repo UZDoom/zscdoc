@@ -6,3 +6,5 @@
 /PKGBUILD
 /target
 /web_stuff/node_modules
+**/result
+/.direnv
