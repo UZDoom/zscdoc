@@ -404,7 +404,7 @@ pub fn reconstruct_function_signature(
     }
     ret.add_newline_no_indent();
     ret.add_no_link(")");
-    if func.constant {
+    if func.constant != ir_common::FunctionDeclarationConstKind::Not {
         ret.add_no_link(" const");
     }
     ret
