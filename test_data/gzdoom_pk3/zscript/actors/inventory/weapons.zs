@@ -37,6 +37,14 @@ class Weapon : StateProvider
 											// AmmoUse1 will be set to the first attack's ammo use so that checking for empty weapons still works
 	meta int SlotNumber;
 	meta double SlotPriority;
+
+	Vector3 BobPivot3D;	// Pivot used for BobWeapon3D
+
+	virtual ui Vector2 ModifyBobLayer(Vector2 Bob, int layer, double ticfrac) { return Bob; }
+
+	virtual ui Vector3, Vector3 ModifyBobLayer3D(Vector3 Translation, Vector3 Rotation, int layer, double ticfrac) { return Translation, Rotation; }
+
+	virtual ui Vector3 ModifyBobPivotLayer3D(int layer, double ticfrac) { return BobPivot3D; }
 	
 	property AmmoGive: AmmoGive1;
 	property AmmoGive1: AmmoGive1;
@@ -63,6 +71,7 @@ class Weapon : StateProvider
 	property SlotNumber: SlotNumber;
 	property SlotPriority: SlotPriority;
 	property LookScale: LookScale;
+	property BobPivot3D : BobPivot3D;
 
 	flagdef NoAutoFire: WeaponFlags, 0;			// weapon does not autofire
 	flagdef ReadySndHalf: WeaponFlags, 1;		// ready sound is played ~1/2 the time
@@ -84,12 +93,12 @@ class Weapon : StateProvider
 	flagdef NoDeathInput: WeaponFlags, 17;		// The weapon cannot be fired/reloaded/whatever when the player is dead
 	flagdef CheatNotWeapon: WeaponFlags, 18;	// Give cheat considers this not a weapon (used by Sigil)
 	flagdef NoAutoSwitchTo : WeaponFlags, 19;	// do not auto switch to this weapon ever!
+	flagdef BFG: WeaponFlags, 20;				// This weapon is a BFG (i.e BFG9000 and the Wraithverge)
+	flagdef Explosive: WeaponFlags, 21;			// This weapon is explosive (i.e Doom and Strife's Rocket Launchers)
 
 	// no-op flags
 	flagdef NoLMS: none, 0;
 	flagdef Allow_With_Respawn_Invul: none, 0;
-	flagdef BFG: none, 0;
-	flagdef Explosive: none, 0;
 
 	Default
 	{
@@ -102,6 +111,7 @@ class Weapon : StateProvider
 		Weapon.WeaponScaleY 1.2;
 		Weapon.SlotNumber -1;
 		Weapon.SlotPriority 32767;
+		Weapon.BobPivot3D (0.0, 0.0, 0.0);
 		+WEAPONSPAWN
 		DefaultStateUsage SUF_ACTOR|SUF_OVERLAY|SUF_WEAPON;
 	}
@@ -133,6 +143,15 @@ class Weapon : StateProvider
 		}
 		return -1, 0;
 	}
+
+	
+	// [AA] Called when the weapon is selected, including
+	// PowerWeaponLevel2 activation:
+	virtual void OnSelect(bool fromPowerup = false) {}
+	
+	// [AA] Called when the weapon is deselected, including
+	// PowerWeaponLevel2 running out or being tossed:
+	virtual void OnDeselect(bool fromPowerup = false, bool onToss = false) {}
 	
 	virtual State GetReadyState ()
 	{
@@ -252,7 +271,7 @@ class Weapon : StateProvider
 		}
 		let psp = player.GetPSprite(PSP_WEAPON);
 		if (!psp) return;
-		if (player.morphTics || player.cheats & CF_INSTANTWEAPSWITCH)
+		if (Alternative || player.cheats & CF_INSTANTWEAPSWITCH)
 		{
 			psp.y = WEAPONBOTTOM;
 		}
@@ -460,6 +479,7 @@ class Weapon : StateProvider
 			if (flags & 1)
 			{ // Make the zoom instant.
 				player.FOV = player.DesiredFOV * zoom;
+				player.cheats |= CF_NOFOVINTERP;
 			}
 			if (flags & 2)
 			{ // Disable pitch/yaw scaling.
@@ -679,6 +699,13 @@ class Weapon : StateProvider
 		{
 			return SisterWeapon.CreateTossable (amt);
 		}
+		
+		// [AA] This weapon was selected and its amount is about to become 0:
+		if (Amount == 1 && Owner != NULL && Owner.Player != NULL && Owner.Player.ReadyWeapon == self)
+		{
+			OnDeselect(onToss: true);
+		}
+		
 		let copy = Weapon(Super.CreateTossable (-1));
 
 		if (copy != NULL)
@@ -742,13 +769,13 @@ class Weapon : StateProvider
 
 		// [BC] This behavior is from the original Doom. Give 5/2 times as much ammoitem when
 		// we pick up a weapon in deathmatch.
-		if (( deathmatch ) && ( gameinfo.gametype & GAME_DoomChex ))
+		if (( deathmatch && !sv_noextraammo ) && ( gameinfo.gametype & GAME_DoomChex ))
 			amount = amount * 5 / 2;
 
 		// extra ammoitem in baby mode and nightmare mode
 		if (!bIgnoreSkill)
 		{
-			amount = int(amount * G_SkillPropertyFloat(SKILLP_AmmoFactor));
+			amount = int(amount * (G_SkillPropertyFloat(SKILLP_AmmoFactor) * sv_ammofactor));
 		}
 		ammoitem = Ammo(other.FindInventory (ammotype));
 		if (ammoitem == NULL)
@@ -783,7 +810,7 @@ class Weapon : StateProvider
 			// extra ammo in baby mode and nightmare mode
 			if (!bIgnoreSkill)
 			{
-				amount = int(amount * G_SkillPropertyFloat(SKILLP_AmmoFactor));
+				amount = int(amount * (G_SkillPropertyFloat(SKILLP_AmmoFactor) * sv_ammofactor));
 			}
 			ammo.Amount += amount;
 			if (ammo.Amount > ammo.MaxAmount && !sv_unlimited_pickup)
@@ -857,6 +884,7 @@ class Weapon : StateProvider
 				if (player.PendingWeapon == NULL ||	player.PendingWeapon == WP_NOCHANGE)
 				{
 					player.refire = 0;
+					OnDeselect(fromPowerup: true);
 					player.ReadyWeapon = SisterWeapon;
 					player.SetPsprite(PSP_WEAPON, SisterWeapon.GetReadyState());
 				}
@@ -867,6 +895,7 @@ class Weapon : StateProvider
 				if (psp != null && psp.Caller == player.ReadyWeapon && psp.CurState.InStateSequence(ready))
 				{
 					// If the weapon changes but the state does not, we have to manually change the PSprite's caller here.
+					OnDeselect(fromPowerup: true);
 					psp.Caller = SisterWeapon;
 					player.ReadyWeapon = SisterWeapon;
 				}
@@ -875,6 +904,7 @@ class Weapon : StateProvider
 					if (player.PendingWeapon == NULL || player.PendingWeapon == WP_NOCHANGE)
 					{
 						// Something went wrong. Initiate a regular weapon change.
+						OnDeselect(fromPowerup: true);
 						player.refire = 0;
 						player.ReadyWeapon = SisterWeapon;
 						player.SetPsprite(PSP_WEAPON, SisterWeapon.GetReadyState());
@@ -927,6 +957,7 @@ class Weapon : StateProvider
 		int count1, count2;
 		int enough, enoughmask;
 		int lAmmoUse1;
+        int lAmmoUse2 = AmmoUse2;
 
 		if (sv_infiniteammo || (Owner.FindInventory ('PowerInfiniteAmmo', true) != null))
 		{
@@ -956,16 +987,17 @@ class Weapon : StateProvider
 		{
 			lAmmoUse1 = 0;
 		}
-		else if (ammocount >= 0 && bDehAmmo)
+		else if (ammocount >= 0)
 		{
 			lAmmoUse1 = ammocount;
+			lAmmoUse2 = ammocount;
 		}
 		else
 		{
 			lAmmoUse1 = AmmoUse1;
 		}
 
-		enough = (count1 >= lAmmoUse1) | ((count2 >= AmmoUse2) << 1);
+		enough = (count1 >= lAmmoUse1) | ((count2 >= lAmmoUse2) << 1);
 		if (useboth)
 		{
 			enoughmask = 3;

@@ -7,6 +7,7 @@ class ArtiTeleportOther : Inventory
 	{
 		+COUNTITEM
 		+FLOATBOB
+		+WEAPONSPAWN
 		+INVENTORY.INVBAR
 		+INVENTORY.FANCYPICKUPSOUND
 		Inventory.PickupFlash "PickupFlash";
@@ -163,8 +164,9 @@ class TelOtherFX1 : Actor
 		double destAngle;
 
 		[dest, destAngle] = level.PickPlayerStart(0, PPS_FORCERANDOM | PPS_NOBLOCKINGCHECK);
-		dest.Z = ONFLOORZ;
-		victim.Teleport ((dest.xy, ONFLOORZ), destangle, TELF_SOURCEFOG | TELF_DESTFOG);
+		if (!level.useplayerstartz)
+			dest.Z = ONFLOORZ;
+		victim.Teleport (dest, destangle, TELF_SOURCEFOG | TELF_DESTFOG);
 	}
 
 	//===========================================================================

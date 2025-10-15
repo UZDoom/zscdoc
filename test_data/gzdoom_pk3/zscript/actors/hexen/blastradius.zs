@@ -4,6 +4,7 @@ class ArtiBlastRadius : CustomInventory
 	Default
 	{
 		+FLOATBOB
+		+WEAPONSPAWN
 		Inventory.DefMaxAmount;
 		Inventory.PickupFlash "PickupFlash";
 		+INVENTORY.INVBAR +INVENTORY.FANCYPICKUPSOUND
@@ -137,6 +138,11 @@ extend class Actor
 			}
 			else if (!mo.player && !mo.bMissile && !mo.bIsMonster && !mo.bCanBlast && !mo.bTouchy && !mo.bVulnerable)
 			{	// Must be monster, player, missile, touchy or vulnerable
+				continue;
+			}
+			if (player && ShouldPassThroughPlayer(mo))
+			{
+				// Don't blast friendly players if collision is disabled.
 				continue;
 			}
 			if (Distance2D(mo) > radius)

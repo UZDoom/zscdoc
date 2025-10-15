@@ -146,11 +146,7 @@ extend class Actor
 
 		if (!fromdecorate)
 		{
-			item.Amount -= amount;
-			if (item.Amount <= 0)
-			{
-				item.DepleteOrDestroy();
-			}
+			item.DepleteBy(amount);
 			// It won't be used in non-decorate context, so return false here
 			return false;
 		}
@@ -169,11 +165,10 @@ extend class Actor
 			// Nothing to do here, except maybe res = false;? Would it make sense?
 			result = false;
 		}
-		else if (!amount || amount >= item.Amount)
+		else
 		{
-			item.DepleteOrDestroy();
+			item.DepleteBy(amount);
 		}
-		else item.Amount -= amount;
 
 		return result;
 	}
@@ -271,10 +266,9 @@ extend class Actor
 		{
 			return true;
 		}
-
-		if (--item.Amount <= 0)
+		else
 		{
-			item.DepleteOrDestroy ();
+			item.DepleteBy(1); //useinventory can only really use one item at a time
 		}
 		return true;
 	}
@@ -291,6 +285,8 @@ extend class Actor
 	{
 		Inventory drop = item.CreateTossable(amt);
 		if (drop == null) return NULL;
+		drop.ClearLocalPickUps();
+		drop.bNeverLocal = true;
 		drop.SetOrigin(Pos + (0, 0, 10.), false);
 		drop.Angle = Angle;
 		drop.VelFromAngle(5.);
@@ -814,7 +810,61 @@ extend class Actor
 		}
 	}
 
+	
+	int GetAmmoCapacity(class<Ammo> type)
+	{
+		if (type != NULL)
+		{
+			let item = FindInventory(type);
+			if (item != NULL)
+			{
+				return item.MaxAmount;
+			}
+			else
+			{
+				return GetDefaultByType(type).MaxAmount;
+			}
+		}
+		return 0;
+	}
 
+	void SetAmmoCapacity(class<Ammo> type, int amount)
+	{
+		if (type != NULL)
+		{
+			let item = FindInventory(type);
+			if (item != NULL)
+			{
+				item.MaxAmount = amount;
+			}
+			else
+			{
+				item = GiveInventoryType(type);
+				if (item != NULL)
+				{
+					item.MaxAmount = amount;
+					item.Amount = 0;
+				}
+			}
+		}
+	}
 
+	clearscope static class<BasicArmor> GetBasicArmorClass()
+	{
+		class<BasicArmor> cls = (class<BasicArmor>)(GameInfo.BasicArmorClass);
+		if (cls)
+			return cls;
+
+		return "BasicArmor";
+	}
+
+	clearscope static class<HexenArmor> GetHexenArmorClass()
+	{
+		class<HexenArmor> cls = (class<HexenArmor>)(GameInfo.HexenArmorClass);
+		if (cls)
+			return cls;
+
+		return "HexenArmor";
+	}
 
 }

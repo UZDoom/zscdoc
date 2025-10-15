@@ -55,8 +55,11 @@ class ListMenuDescriptor : MenuDescriptor native
 	native int mFontColor;
 	native int mFontColor2;
 	native bool mCenter;
+	native bool mCenterText;
 	native bool mAnimatedTransition;
 	native bool mAnimated;
+	native bool mDontBlur;
+	native bool mDontDim;
 	native int mVirtWidth, mVirtHeight;
 
 	native void Reset();
@@ -89,6 +92,8 @@ class ListMenu : Menu
 		mDesc = desc;
 		AnimatedTransition = mDesc.mAnimatedTransition;
 		Animated = mDesc.mAnimated;
+		DontBlur = mDesc.mDontBlur;
+		DontDim = mDesc.mDontDim;
 		if (desc.mCenter)
 		{
 			double center = 160;
@@ -120,7 +125,7 @@ class ListMenu : Menu
 			mDesc.mItems[i].OnMenuCreated();
 		}
 	}
-	
+
 	//=============================================================================
 	//
 	//
@@ -136,7 +141,7 @@ class ListMenu : Menu
 		}
 		return NULL;
 	}
-	
+
 
 	//=============================================================================
 	//
@@ -183,11 +188,12 @@ class ListMenu : Menu
 	override bool MenuEvent (int mkey, bool fromcontroller)
 	{
 		int oldSelect = mDesc.mSelectedItem;
-		int startedAt = max(0, mDesc.mSelectedItem);
+		int startedAt;
 
 		switch (mkey)
 		{
 		case MKEY_Up:
+			startedAt = mDesc.mSelectedItem < 0 ? 0 : mDesc.mSelectedItem;
 			do
 			{
 				if (--mDesc.mSelectedItem < 0) mDesc.mSelectedItem = mDesc.mItems.Size()-1;
@@ -198,6 +204,7 @@ class ListMenu : Menu
 			return true;
 
 		case MKEY_Down:
+			startedAt = mDesc.mSelectedItem < 0 ? mDesc.mItems.Size()-1 : mDesc.mSelectedItem;
 			do
 			{
 				if (++mDesc.mSelectedItem >= mDesc.mItems.Size()) mDesc.mSelectedItem = 0;
@@ -243,7 +250,7 @@ class ListMenu : Menu
 			int h = mDesc.DisplayHeight();
 			double fx, fy, fw, fh;
 			[fx, fy, fw, fh] = Screen.GetFullscreenRect(w, h, FSMode_ScaleToFit43);
-			
+
 			x = int((x - fx) * w / fw);
 			y = int((y - fy) * h / fh);
 		}
@@ -311,7 +318,7 @@ class ListMenu : Menu
 		}
 		Super.Drawer();
 	}
-	
+
 	//=============================================================================
 	//
 	//

@@ -14,6 +14,7 @@ class BFG9000 : DoomWeapon
 		Weapon.AmmoGive 40;
 		Weapon.AmmoType "Cell";
 		+WEAPON.NOAUTOFIRE;
+		+WEAPON.BFG;
 		Inventory.PickupMessage "$GOTBFG9000";
 		Tag "$TAG_BFG9000";
 	}
@@ -107,7 +108,7 @@ extend class StateProvider
 		if (invoker != weap || stateinfo == null || stateinfo.mStateType != STATE_Psprite) weap = null;
 		if (weap != null)
 		{
-			if (!weap.DepleteAmmo (weap.bAltFire, true, 1))
+			if (!weap.DepleteAmmo (weap.bAltFire, true))
 				return;
 
 			doesautoaim = weap.bNoAutoaim;

@@ -109,7 +109,7 @@ class ListMenuItemStaticPatch : ListMenuItem
 		mColor = desc.mFontColor;
 
 	}
-	
+
 	override void Draw(bool selected, ListMenuDescriptor desc)
 	{
 		if (!mTexture.Exists())
@@ -161,9 +161,9 @@ class ListMenuItemStaticText : ListMenuItem
 		mText = text;
 		mFont = desc.mFont;
 		mColor = color >= 0? color : desc.mFontColor;
-		mCentered = false;
+		mCentered = desc.mCenterText;
 	}
-	
+
 	void InitDirect(double x, double y, String text, Font font, int color = Font.CR_UNTRANSLATED, bool centered = false)
 	{
 		Super.Init(x, y);
@@ -172,7 +172,7 @@ class ListMenuItemStaticText : ListMenuItem
 		mColor = color;
 		mCentered = centered;
 	}
-	
+
 	override void Draw(bool selected, ListMenuDescriptor desc)
 	{
 		if (mText.Length() != 0)
@@ -216,12 +216,12 @@ class ListMenuItemSelectable : ListMenuItem
 		mParam = param;
 		mHotkey = 0;
 	}
-	
+
 	override bool CheckCoordinate(int x, int y)
 	{
 		return mEnabled > 0 && y >= mYpos && y < mYpos + mHeight;	// no x check here
 	}
-	
+
 	override bool Selectable()
 	{
 		return mEnabled > 0;
@@ -231,13 +231,13 @@ class ListMenuItemSelectable : ListMenuItem
 	{ 
 		return c > 0 && c == mHotkey;
 	}
-	
+
 	override bool Activate()
 	{
 		Menu.SetMenu(mAction, mParam);
 		return true;
 	}
-	
+
 	override bool MouseEvent(int type, int x, int y)
 	{
 		if (type == Menu.MOUSE_Release)
@@ -250,7 +250,7 @@ class ListMenuItemSelectable : ListMenuItem
 		}
 		return false;
 	}
-	
+
 	override Name, int GetAction()
 	{
 		return mAction, mParam;
@@ -279,7 +279,7 @@ class ListMenuItemTextItem : ListMenuItemSelectable
 		mColorSelected = desc.mFontcolor2;
 		mHotkey = hotkey.GetNextCodePoint(0);
 	}
-	
+
 	void InitDirect(double x, double y, int height, String hotkey, String text, Font font, int color, int color2, Name child, int param = 0)
 	{
 		Super.Init(x, y, height, child, param);
@@ -290,11 +290,16 @@ class ListMenuItemTextItem : ListMenuItemSelectable
 		int pos = 0;
 		mHotkey = hotkey.GetNextCodePoint(0);
 	}
-	
+
 	override void Draw(bool selected, ListMenuDescriptor desc)
 	{
 		let font = menuDelegate.PickFont(mFont);
-		DrawText(desc, font, selected ? mColorSelected : mColor, mXpos, mYpos, mText);
+		double x = mXpos;
+		if (desc.mCenterText) 
+		{
+			x -= font.StringWidth(mText) / 2;
+		}
+		DrawText(desc, font, selected ? mColorSelected : mColor, x, mYpos, mText);
 	}
 
 	override int GetWidth()
@@ -313,31 +318,31 @@ class ListMenuItemTextItem : ListMenuItemSelectable
 class ListMenuItemPatchItem : ListMenuItemSelectable
 {
 	TextureID mTexture;
-	
+
 	void Init(ListMenuDescriptor desc, TextureID patch, String hotkey, Name child, int param = 0)
 	{
 		Super.Init(desc.mXpos, desc.mYpos, desc.mLinespacing, child, param);
 		mHotkey = hotkey.GetNextCodePoint(0);
 		mTexture = patch;
 	}
-	
+
 	void InitDirect(double x, double y, int height, TextureID patch, String hotkey, Name child, int param = 0)
 	{
 		Super.Init(x, y, height, child, param);
 		mHotkey = hotkey.GetNextCodePoint(0);
 		mTexture = patch;
 	}
-	
+
 	override void Draw(bool selected, ListMenuDescriptor desc)
 	{
 		DrawTexture(desc, mTexture, mXpos, mYpos);
 	}
-	
+
 	override int GetWidth()
 	{
 		return TexMan.GetSize(mTexture);
 	}
-	
+
 }
 
 //=============================================================================
@@ -357,7 +362,7 @@ class ListMenuItemCaptionItem : ListMenuItem
 		mText = text;
 		mFont = Font.FindFont(fnt);
 	}
-	
+
 	override void Draw(bool selected, ListMenuDescriptor desc)
 	{
 		let font = menuDelegate.PickFont(desc.mFont);

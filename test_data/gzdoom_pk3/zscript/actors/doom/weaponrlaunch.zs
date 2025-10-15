@@ -13,6 +13,7 @@ class RocketLauncher : DoomWeapon
 		Weapon.AmmoGive 2;
 		Weapon.AmmoType "RocketAmmo";
 		+WEAPON.NOAUTOFIRE
+		+WEAPON.EXPLOSIVE
 		Inventory.PickupMessage "$GOTLAUNCHER";
 		Tag "$TAG_ROCKETLAUNCHER";
 	}
@@ -152,7 +153,7 @@ extend class StateProvider
 		Weapon weap = player.ReadyWeapon;
 		if (weap != null && invoker == weap && stateinfo != null && stateinfo.mStateType == STATE_Psprite)
 		{
-			if (!weap.DepleteAmmo (weap.bAltFire, true, 1))
+			if (!weap.DepleteAmmo (weap.bAltFire, true))
 				return;
 		}
 		
@@ -177,7 +178,7 @@ extend class StateProvider
 		Weapon weap = player.ReadyWeapon;
 		if (weap != null && invoker == weap && stateinfo != null && stateinfo.mStateType == STATE_Psprite)
 		{
-			if (!weap.DepleteAmmo (weap.bAltFire, true, 1))
+			if (!weap.DepleteAmmo (weap.bAltFire, true))
 				return;
 		}
 			

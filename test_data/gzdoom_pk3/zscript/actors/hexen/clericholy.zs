@@ -85,6 +85,7 @@ class CWeapWraithverge : ClericWeapon
 		Health 3;
 		Weapon.SelectionOrder 3000;
 		+WEAPON.PRIMARY_USES_BOTH;
+		+WEAPON.BFG;
 		+Inventory.NoAttenPickupSound
 		Weapon.AmmoUse1 18;
 		Weapon.AmmoUse2 18;
@@ -346,7 +347,7 @@ class HolySpirit : Actor
 	{
 		if (thing.bShootable && thing != target)
 		{
-			if (multiplayer && !deathmatch && thing.player && target.player)
+			if (multiplayer && !deathmatch && thing.player && target && target.player)
 			{ // don't attack other co-op players
 				return true;
 			}

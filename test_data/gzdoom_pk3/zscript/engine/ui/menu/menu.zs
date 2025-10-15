@@ -3,7 +3,9 @@
 ** The menu engine core
 **
 **---------------------------------------------------------------------------
+**
 ** Copyright 2010-2020 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
 ** All rights reserved.
 **
 ** Redistribution and use in source and binary forms, with or without
@@ -28,15 +30,15 @@
 ** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 ** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 ** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**
 **---------------------------------------------------------------------------
 **
 */
 
-
 struct KeyBindings native version("2.4")
 {
 	native static String NameKeys(int k1, int k2);
-	native static String NameAllKeys(array<int> list);
+	native static String NameAllKeys(array<int> list, bool colors = true);
 
 	native int, int GetKeysForCommand(String cmd);
 	native void GetAllKeysForCommand(out array<int> list, String cmd);
@@ -68,22 +70,60 @@ struct JoystickConfig native version("2.4")
 		NUM_JOYAXIS,
 	};
 
+	enum EJoyCurve {
+		JOYCURVE_CUSTOM = -1,
+		JOYCURVE_DEFAULT,
+		JOYCURVE_LINEAR,
+		JOYCURVE_QUADRATIC,
+		JOYCURVE_CUBIC,
+
+		NUM_JOYCURVE
+	};
+
 	native float GetSensitivity();
 	native void SetSensitivity(float scale);
+
+	native bool HasHaptics();
+	native float GetHapticsStrength();
+	native void SetHapticsStrength(float strength);
 
 	native float GetAxisScale(int axis);
 	native void SetAxisScale(int axis, float scale);
 
 	native float GetAxisDeadZone(int axis);
 	native void SetAxisDeadZone(int axis, float zone);
-	
-	native int GetAxisMap(int axis);
-	native void SetAxisMap(int axis, int gameaxis);
-	
+
+	native float GetAxisDigitalThreshold(int axis);
+	native void SetAxisDigitalThreshold(int axis, float thresh);
+
+	native int GetAxisResponseCurve(int axis);
+	native void SetAxisResponseCurve(int axis, int preset);
+
+	native float GetAxisResponseCurvePoint(int axis, int point);
+	native void SetAxisResponseCurvePoint(int axis, int point, float value);
+
+	deprecated("4.15.1", "Axis mapping was replaced with binds; remove this menu item") int GetAxisMap(int axis)
+	{
+		return JOYAXIS_None;
+	}
+
+	deprecated("4.15.1", "Axis mapping was replaced with binds; remove this menu item") void SetAxisMap(int axis, int gameaxis)
+	{
+		// NOP
+	}
+
 	native String GetName();
 	native int GetNumAxes();
 	native String GetAxisName(int axis);
-	
+
+	native bool GetEnabled();
+	native void SetEnabled(bool enabled);
+
+	native bool AllowsEnabledInBackground();
+	native bool GetEnabledInBackground();
+	native void SetEnabledInBackground(bool enabled);
+
+	native void Reset();
 }
 
 class Menu : Object native ui version("2.4")
@@ -96,12 +136,14 @@ class Menu : Object native ui version("2.4")
 		MKEY_Right,
 		MKEY_PageUp,
 		MKEY_PageDown,
+		MKEY_Home,
+		MKEY_End,
 		MKEY_Enter,
 		MKEY_Back,
 		MKEY_Clear,
 		NUM_MKEYS,
 
-		// These are not buttons but events sent from other menus 
+		// These are not buttons but events sent from other menus
 
 		MKEY_Input,
 		MKEY_Abort,
@@ -139,7 +181,7 @@ class Menu : Object native ui version("2.4")
 	native static void SetMouseCapture(bool on);
 	native void Close();
 	native void ActivateMenu();
-	
+
 	//=============================================================================
 	//
 	//
@@ -156,7 +198,7 @@ class Menu : Object native ui version("2.4")
 		AnimatedTransition = false;
 		Animated = false;
 	}
-	
+
 	//=============================================================================
 	//
 	//
@@ -178,7 +220,6 @@ class Menu : Object native ui version("2.4")
 		}
 		return false;
 	}
-
 
 	//=============================================================================
 	//
@@ -217,20 +258,20 @@ class Menu : Object native ui version("2.4")
 	//=============================================================================
 
 	virtual bool OnUIEvent(UIEvent ev)
-	{ 
+	{
 		bool res = false;
 		int y = ev.MouseY;
 		if (ev.type == UIEvent.Type_LButtonDown)
 		{
 			res = MouseEventBack(MOUSE_Click, ev.MouseX, y);
 			// make the menu's mouse handler believe that the current coordinate is outside the valid range
-			if (res) y = -1;	
+			if (res) y = -1;
 			res |= MouseEvent(MOUSE_Click, ev.MouseX, y);
 			if (res)
 			{
 				SetCapture(true);
 			}
-			
+
 		}
 		else if (ev.type == UIEvent.Type_MouseMove)
 		{
@@ -238,7 +279,7 @@ class Menu : Object native ui version("2.4")
 			if (mMouseCapture || m_use_mouse == 1)
 			{
 				res = MouseEventBack(MOUSE_Move, ev.MouseX, y);
-				if (res) y = -1;	
+				if (res) y = -1;
 				res |= MouseEvent(MOUSE_Move, ev.MouseX, y);
 			}
 		}
@@ -248,25 +289,25 @@ class Menu : Object native ui version("2.4")
 			{
 				SetCapture(false);
 				res = MouseEventBack(MOUSE_Release, ev.MouseX, y);
-				if (res) y = -1;	
+				if (res) y = -1;
 				res |= MouseEvent(MOUSE_Release, ev.MouseX, y);
 			}
 		}
-		return false; 
+		return false;
 	}
 
 	virtual bool OnInputEvent(InputEvent ev)
-	{ 
+	{
 		return false;
 	}
-	
+
 	//=============================================================================
 	//
 	//
 	//
 	//=============================================================================
 
-	virtual void Drawer () 
+	virtual void Drawer ()
 	{
 		if (self == GetCurrentMenu() && BackbuttonAlpha > 0 && m_show_backbutton >= 0 && m_use_mouse)
 		{
@@ -289,7 +330,7 @@ class Menu : Object native ui version("2.4")
 			}
 		}
 	}
-	
+
 	//=============================================================================
 	//
 	//
@@ -326,38 +367,41 @@ class Menu : Object native ui version("2.4")
 	//
 	//=============================================================================
 
-	static void MenuSound(Name snd)
+	static void MenuSound(Name snd, bool rumble = true)
 	{
+		if (rumble && CVar.GetCVar('haptics_do_menus').GetBool())
+		{
+			Haptics.Rumble(snd);
+		}
 		menuDelegate.PlaySound(snd);
 	}
-	
+
 	deprecated("4.0") static void DrawConText (int color, int x, int y, String str)
 	{
 		screen.DrawText (ConFont, color, x, y, str, DTA_CellX, 8 * CleanXfac, DTA_CellY, 8 * CleanYfac);
 	}
-	
+
 	static Font OptionFont()
 	{
 		return NewSmallFont;
 	}
-	
-	static int OptionHeight() 
+
+	static int OptionHeight()
 	{
 		return OptionFont().GetHeight();
 	}
-	
-	static int OptionWidth(String s)
+
+	static int OptionWidth(String s, bool localize = true)
 	{
-		return OptionFont().StringWidth(s);
+		return OptionFont().StringWidth(s, localize);
 	}
-	
-	static void DrawOptionText(int x, int y, int color, String text, bool grayed = false)
+
+	static void DrawOptionText(int x, int y, int color, String text, bool grayed = false, bool localize = true)
 	{
-		String label = Stringtable.Localize(text);
+		String label = localize ? Stringtable.Localize(text) : text;
 		int overlay = grayed? Color(96,48,0,0) : 0;
-		screen.DrawText (OptionFont(), color, x, y, text, DTA_CleanNoMove_1, true, DTA_ColorOverlay, overlay);
+		screen.DrawText (OptionFont(), color, x, y, text, DTA_CleanNoMove_1, true, DTA_ColorOverlay, overlay, DTA_Localize, localize);
 	}
-	
 
 }
 

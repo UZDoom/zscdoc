@@ -214,10 +214,40 @@ class BaseStatusBar : StatusBarCore native
 
 	virtual void Init() 
 	{
+		InitScoreboard();
+	}
+
+	virtual void Draw (int state, double TicFrac)
+	{
+		// HUD_AltHud state is for popups only
+		if (state == HUD_AltHud)
+			return;
+
+		if (state == HUD_StatusBar)
+		{
+			RefreshBackground();
+		}
+
+		if (idmypos)
+		{ 
+			// Draw current coordinates
+			DrawMyPos();
+		}
+
+		if (viewactive)
+		{
+			if (CPlayer && CPlayer.camera && CPlayer.camera.player)
+			{
+				DrawCrosshair(TicFrac);
+			}
+		}
+		else if (automapactive)
+		{
+			DrawAutomapHUD(TicFrac);
+		}
 	}
 
 	native virtual void Tick ();
-	native virtual void Draw (int state, double TicFrac);
 	native virtual void ScreenSizeChanged ();
 	native virtual clearscope void ReceivedWeapon (Weapon weapn);
 	native virtual clearscope void SetMugShotState (String state_name, bool wait_till_done=false, bool reset=false);
@@ -238,6 +268,8 @@ class BaseStatusBar : StatusBarCore native
 	// [MK] let the HUD handle drawing the pause graphics
 	virtual bool DrawPaused(int player) { return false; }
 
+	protected native void RefreshBackground();
+	protected native void DrawCrosshair(double TicFrac);
 	native TextureID GetMugshot(int accuracy, int stateflags=MugShot.STANDARD, String default_face = "STF");
 	native int GetTopOfStatusBar();
 
@@ -430,7 +462,7 @@ class BaseStatusBar : StatusBarCore native
 	
 	int GetArmorAmount()
 	{
-		let armor = CPlayer.mo.FindInventory("BasicArmor");
+		let armor = CPlayer.mo.FindInventory("BasicArmor", true);
 		return armor? armor.Amount : 0;
 	}
 	
@@ -451,13 +483,13 @@ class BaseStatusBar : StatusBarCore native
 	int GetArmorSavePercent()
 	{
 		double add = 0;
-		let harmor = HexenArmor(CPlayer.mo.FindInventory("HexenArmor"));
+		let harmor = HexenArmor(CPlayer.mo.FindInventory("HexenArmor", true));
 		if(harmor != NULL)
 		{
 			add = harmor.Slots[0] + harmor.Slots[1] + harmor.Slots[2] + harmor.Slots[3] + harmor.Slots[4];
 		}
 		//Hexen counts basic armor also so we should too.
-		let armor = BasicArmor(CPlayer.mo.FindInventory("BasicArmor"));
+		let armor = BasicArmor(CPlayer.mo.FindInventory("BasicArmor", true));
 		if(armor != NULL && armor.Amount > 0)
 		{
 			add += armor.SavePercent * 100;
@@ -755,7 +787,7 @@ class BaseStatusBar : StatusBarCore native
 	//
 	//============================================================================
 	
-	int GetTranslation() const
+	TranslationID GetTranslation() const
 	{
 		if(gameinfo.gametype & GAME_Raven)
 			return Translation.MakeID(TRANSLATION_PlayersExtra, CPlayer.mo.PlayerNumber());
@@ -771,7 +803,7 @@ class BaseStatusBar : StatusBarCore native
 
 	void DrawHexenArmor(int armortype, String image, Vector2 pos, int flags = 0, double alpha = 1.0, Vector2 boxsize = (-1, -1), Vector2 scale = (1.,1.))
 	{
-		let harmor = HexenArmor(statusBar.CPlayer.mo.FindInventory("HexenArmor"));
+		let harmor = HexenArmor(statusBar.CPlayer.mo.FindInventory("HexenArmor", true));
 		if (harmor != NULL)
 		{
 			let slotval = harmor.Slots[armorType];

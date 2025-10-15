@@ -1,15 +1,52 @@
+/*
+** statscreen.zs
+**
+**---------------------------------------------------------------------------
+**
+** Copyright 2010-2017 Christoph Oelckers
+** Copyright 2017-2025 GZDoom Maintainers and Contributors
+** All rights reserved.
+**
+** Redistribution and use in source and binary forms, with or without
+** modification, are permitted provided that the following conditions
+** are met:
+**
+** 1. Redistributions of source code must retain the above copyright
+**    notice, this list of conditions and the following disclaimer.
+** 2. Redistributions in binary form must reproduce the above copyright
+**    notice, this list of conditions and the following disclaimer in the
+**    documentation and/or other materials provided with the distribution.
+** 3. The name of the author may not be used to endorse or promote products
+**    derived from this software without specific prior written permission.
+**
+** THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+** IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+** OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+** IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+** INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+** NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+** DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+** THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+** (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+** THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+**
+**---------------------------------------------------------------------------
+**
+*/
+
 // Note that the status screen needs to run in 'play' scope!
 
-class InterBackground native play version("2.5")
+class InterBackground native ui version("2.5")
 {
 	native static InterBackground Create(wbstartstruct wbst);
 	native virtual bool LoadBackground(bool isenterpic);
 	native virtual void updateAnimatedBack();
 	native virtual void drawBackground(int CurState, bool drawsplat, bool snl_pointeron);
+	native virtual bool IsUsingMusic();
 }
 
 // This is obsolete. Hopefully this was never used...
-struct PatchInfo play version("2.5")
+struct PatchInfo ui version("2.5")
 {
 	Font mFont;
 	deprecated("3.8") TextureID mPatch;
@@ -38,8 +75,7 @@ struct PatchInfo play version("2.5")
 	}
 };
 
-
-class StatusScreen abstract play version("2.5")
+class StatusScreen : ScreenJob abstract version("2.5")
 {
 	enum EValues
 	{
@@ -79,7 +115,7 @@ class StatusScreen abstract play version("2.5")
 
 	InterBackground bg;
 	int				acceleratestage;	// used to accelerate or skip a stage
-	bool				playerready[MAXPLAYERS];
+	bool				playerready[MAXPLAYERS]; // This is no longer used since the server needs to track this
 	int				me;					// wbs.pnum
 	int				bcnt;
 	int				CurState;				// specifies current CurState
@@ -105,7 +141,7 @@ class StatusScreen abstract play version("2.5")
 	float			shadowalpha;
 
 	PatchInfo 		mapname;
-	PatchInfo 		finished;
+	PatchInfo 		finishedp;
 	PatchInfo 		entering;
 	PatchInfo		content;
 	PatchInfo		author;
@@ -128,12 +164,11 @@ class StatusScreen abstract play version("2.5")
 
 	int 			player_deaths[MAXPLAYERS];
 	int  			sp_state;
-	
+
 	int cWidth, cHeight;	// size of the canvas
 	int scalemode;
 	int wrapwidth;	// size used to word wrap level names
 	int scaleFactorX, scaleFactorY;
-
 
 	//====================================================================
 	//
@@ -148,7 +183,7 @@ class StatusScreen abstract play version("2.5")
 		scalemode = FSMode_ScaleToFit43;
 		scalefactorx = 1;
 		scalefactory = 1;
-		wrapwidth = wrapw == -1 ? width : wrapw;;
+		wrapwidth = wrapw == -1 ? width : wrapw;
 	}
 
 	//====================================================================
@@ -164,7 +199,7 @@ class StatusScreen abstract play version("2.5")
 		else screen.DrawChar(fnt, translation, x, y, charcode, DTA_FullscreenScale, scalemode, DTA_VirtualWidth, cwidth, DTA_VirtualHeight, cheight);
 		return x - width;
 	}
-	
+
 	//====================================================================
 	//
 	//
@@ -200,7 +235,7 @@ class StatusScreen abstract play version("2.5")
 
 	int DrawName(int y, TextureID tex, String levelname)
 	{
-		// draw <LevelName> 
+		// draw <LevelName>
 		if (tex.isValid())
 		{
 			let size = TexMan.GetScaledSize(tex);
@@ -235,16 +270,16 @@ class StatusScreen abstract play version("2.5")
 	// Draws a level author's name with the given font
 	//
 	//====================================================================
-	
+
 	int DrawAuthor(int y, String levelname)
 	{
 		if (levelname.Length() > 0)
 		{
 			int h = 0;
 			int lumph = author.mFont.GetHeight() * scaleFactorY;
-			
+
 			BrokenLines lines = author.mFont.BreakLines(levelname, wrapwidth / scaleFactorX);
-			
+
 			int count = lines.Count();
 			for (int i = 0; i < count; i++)
 			{
@@ -255,7 +290,7 @@ class StatusScreen abstract play version("2.5")
 		}
 		return y;
 	}
-	
+
 	//====================================================================
 	//
 	// Only kept so that mods that were accessing it continue to compile
@@ -276,12 +311,12 @@ class StatusScreen abstract play version("2.5")
 	// Draws a text, either as patch or as string from the string table
 	//
 	//====================================================================
-	
+
 	int DrawPatchOrText(int y, PatchInfo pinfo, TextureID patch, String stringname)
 	{
 		String string = Stringtable.Localize(stringname);
 		int midx = cwidth / 2;
-		
+
 		if (TexMan.OkForLocalization(patch, stringname))
 		{
 			let size = TexMan.GetScaledSize(patch);
@@ -294,7 +329,7 @@ class StatusScreen abstract play version("2.5")
 			return y + pinfo.mFont.GetHeight() * scaleFactorY;
 		}
 	}
-	
+
 	//====================================================================
 	//
 	// Draws "<Levelname> Finished!"
@@ -309,7 +344,7 @@ class StatusScreen abstract play version("2.5")
 		bool ispatch = wbs.LName0.isValid();
 		int oldy = TITLEY * scaleFactorY;
 		int h;
-		
+
 		if (!ispatch)
 		{
 			let asc = mapname.mFont.GetMaxAscender(lnametexts[1]);
@@ -318,11 +353,11 @@ class StatusScreen abstract play version("2.5")
 				oldy = (asc+2) * scaleFactorY;
 			}
 		}
-		
+
 		int y = DrawName(oldy, wbs.LName0, lnametexts[0]);
 
 		// If the displayed info is made of patches we need some additional offsetting here.
-		if (ispatch) 
+		if (ispatch)
 		{
 			int disp = 0;
 			// The offset getting applied here must at least be as tall as the largest ascender in the following text to avoid overlaps.
@@ -331,10 +366,10 @@ class StatusScreen abstract play version("2.5")
 				int h1 = BigFont.GetHeight() - BigFont.GetDisplacement();
 				int h2 = (y - oldy) / scaleFactorY / 4;
 				disp = min(h1, h2);
-				
+
 				if (!TexMan.OkForLocalization(finishedPatch, "$WI_FINISHED"))
 				{
-					disp += finished.mFont.GetMaxAscender("$WI_FINISHED");
+					disp += finishedp.mFont.GetMaxAscender("$WI_FINISHED");
 				}
 			}
 			else
@@ -343,16 +378,16 @@ class StatusScreen abstract play version("2.5")
 			}
 			y += disp * scaleFactorY;
 		}
-		
+
 		y = DrawAuthor(y, authortexts[0]);
-		
+
 		// draw "Finished!"
 
 		int statsy = multiplayer? NG_STATSY : SP_STATSY * scaleFactorY;
-		if (y < (statsy - finished.mFont.GetHeight()*3/4) * scaleFactorY)
+		if (y < (statsy - finishedp.mFont.GetHeight()*3/4) * scaleFactorY)
 		{
 			// don't draw 'finished' if the level name is too tall
-			y = DrawPatchOrText(y, finished, finishedPatch, "$WI_FINISHED");
+			y = DrawPatchOrText(y, finishedp, finishedPatch, "$WI_FINISHED");
 		}
 		return y;
 	}
@@ -381,9 +416,9 @@ class StatusScreen abstract play version("2.5")
 		}
 
 		int y = DrawPatchOrText(oldy, entering, enteringPatch, "$WI_ENTERING");
-		
+
 		// If the displayed info is made of patches we need some additional offsetting here.
-		
+
 		if (ispatch)
 		{
 			int h1 = BigFont.GetHeight() - BigFont.GetDisplacement();
@@ -400,12 +435,12 @@ class StatusScreen abstract play version("2.5")
 
 		y = DrawName(y, wbs.LName1, lnametexts[1]);
 
-		if (wbs.LName1.isValid() && authortexts[1].length() > 0) 
+		if (wbs.LName1.isValid() && authortexts[1].length() > 0)
 		{
 			// Consdider the ascender height of the following text.
 			y += author.mFont.GetMaxAscender(authortexts[1]) * scaleFactorY;
 		}
-			
+
 		DrawAuthor(y, authortexts[1]);
 
 	}
@@ -440,7 +475,7 @@ class StatusScreen abstract play version("2.5")
 			}
 			len = text.Length();
 		}
-		
+
 		for(int text_p = len-1; text_p >= 0; text_p--)
 		{
 			// Digits are centered in a box the width of the '3' character.
@@ -503,7 +538,6 @@ class StatusScreen abstract play version("2.5")
 			drawNum (fnt, x, y, p, -1, false, color, nomove);
 		}
 	}
-
 
 	//====================================================================
 	//
@@ -681,7 +715,6 @@ class StatusScreen abstract play version("2.5")
 		if (cnt == 0)
 		{
 			End();
-			Level.WorldDone();
 		}
 	}
 
@@ -693,11 +726,10 @@ class StatusScreen abstract play version("2.5")
 
 	protected virtual void initShowNextLoc ()
 	{
-		if (wbs.next == "") 
+		if (wbs.next == "")
 		{
 			// Last map in episode - there is no next location!
-			End();
-			Level.WorldDone();
+			jobstate = finished;
 			return;
 		}
 
@@ -732,7 +764,7 @@ class StatusScreen abstract play version("2.5")
 		bg.drawBackground(CurState, true, snl_pointeron);
 
 		// draws which level you are entering..
-		drawEL ();  
+		drawEL ();
 
 	}
 
@@ -747,7 +779,7 @@ class StatusScreen abstract play version("2.5")
 		snl_pointeron = true;
 		drawShowNextLoc();
 	}
-	
+
 	//====================================================================
 	//
 	//
@@ -758,7 +790,7 @@ class StatusScreen abstract play version("2.5")
 	{
 		int i;
 		int frags = 0;
-	
+
 		for (i = 0; i < MAXPLAYERS; i++)
 		{
 			if (playeringame[i]
@@ -767,7 +799,7 @@ class StatusScreen abstract play version("2.5")
 				frags += Plrs[playernum].frags[i];
 			}
 		}
-		
+
 		// JDC hack - negative frags.
 		frags -= Plrs[playernum].frags[playernum];
 
@@ -782,12 +814,17 @@ class StatusScreen abstract play version("2.5")
 
 	static void PlaySound(Sound snd)
 	{
-		S_StartSound(snd, CHAN_VOICE, CHANF_MAYBE_LOCAL|CHANF_UI, 1, ATTN_NONE);
+		S_StartSound(
+			snd,
+			CHAN_VOICE,
+			CHANF_MAYBE_LOCAL|CHANF_UI|(CVar.GetCVar('haptics_do_menus').GetBool()? CHANF_RUMBLE: CHANF_NORUMBLE),
+			1,
+			ATTN_NONE
+		);
 	}
-	
-	
+
 	// ====================================================================
-	// checkForAccelerate
+	//
 	// Purpose: See if the player has hit either the attack or use key
 	//          or mouse button.  If so we set acceleratestage to 1 and
 	//          all those display routines above jump right to the end.
@@ -796,27 +833,26 @@ class StatusScreen abstract play version("2.5")
 	//
 	// ====================================================================
 
-	protected void checkForAccelerate(void)
+	override bool OnEvent(InputEvent evt)
 	{
-		int i;
-
-		// check for button presses to skip delays
-		for (i = 0; i < MAXPLAYERS; i++)
+		if (evt.type == InputEvent.Type_KeyDown)
 		{
-			PlayerInfo player = players[i];
-			if (playeringame[i])
-			{
-				if ((player.cmd.buttons ^ player.oldbuttons) &&
-					((player.cmd.buttons & player.oldbuttons) == player.oldbuttons) && player.Bot == NULL)
-				{
-					acceleratestage = 1;
-					playerready[i] = true;
-				}
-				player.oldbuttons = player.buttons;
-			}
+			accelerateStage = 1;
+			return true;
 		}
+		return false;
 	}
-	
+
+	void nextStage()
+	{
+		accelerateStage = 1;
+	}
+
+	// this one is no longer used, but still needed for old content referencing them.
+	deprecated("4.8") void checkForAccelerate()
+	{
+	}
+
 	// ====================================================================
 	// Ticker
 	// Purpose: Do various updates every gametic, for stats, animation,
@@ -825,58 +861,63 @@ class StatusScreen abstract play version("2.5")
 	// Returns: void
 	//
 	// ====================================================================
-	
+
 	virtual void StartMusic()
 	{
-		Level.SetInterMusic(wbs.next);
+		if (!bg.IsUsingMusic())
+			Level.SetInterMusic(wbs.next);
 	}
 
 	//====================================================================
 	//
-	//
+	// Two stage interface to allow redefining this class as a screen job
 	//
 	//====================================================================
 
-	virtual void Ticker(void)
+	protected virtual void Ticker()
 	{
 		// counter for general background animation
-		bcnt++;  
-	
+		bcnt++;
+
 		if (bcnt == 1)
 		{
 			StartMusic();
 		}
-	
-		checkForAccelerate();
+
 		bg.updateAnimatedBack();
-	
+
 		switch (CurState)
 		{
 		case StatCount:
 			updateStats();
 			break;
-		
+
 		case ShowNextLoc:
 			updateShowNextLoc();
 			break;
-		
+
 		case NoState:
 			updateNoState();
 			break;
 
 		case LeavingIntermission:
-			// Hush, GCC.
 			break;
 		}
 	}
-	
+
+	override void OnTick()
+	{
+		Ticker();
+		if (CurState == StatusScreen.LeavingIntermission) jobstate = finished;
+	}
+
 	//====================================================================
 	//
 	//
 	//
 	//====================================================================
 
-	virtual void Drawer (void)
+	protected virtual void Drawer()
 	{
 		switch (CurState)
 		{
@@ -885,16 +926,21 @@ class StatusScreen abstract play version("2.5")
 			bg.drawBackground(CurState, false, false);
 			drawStats();
 			break;
-	
+
 		case ShowNextLoc:
 		case LeavingIntermission:	// this must still draw the screen once more for the wipe code to pick up.
 			drawShowNextLoc();
 			break;
-	
+
 		default:
 			drawNoState();
 			break;
 		}
+	}
+
+	override void Draw(double smoothratio)
+	{
+		Drawer();
 	}
 
 	//====================================================================
@@ -922,9 +968,9 @@ class StatusScreen abstract play version("2.5")
 			wbs.partime = 0;
 			wbs.sucktime = 0;
 		}
-		
+
 		entering.Init(gameinfo.mStatscreenEnteringFont);
-		finished.Init(gameinfo.mStatscreenFinishedFont);
+		finishedp.Init(gameinfo.mStatscreenFinishedFont);
 		mapname.Init(gameinfo.mStatscreenMapNameFont);
 		content.Init(gameinfo.mStatscreenContentFont);
 		author.Init(gameinfo.mStatscreenAuthorFont);
@@ -939,7 +985,7 @@ class StatusScreen abstract play version("2.5")
 		enteringPatch = TexMan.CheckForTexture("WIENTER", TexMan.Type_MiscPatch);	// "entering"
 		finishedPatch = TexMan.CheckForTexture("WIF", TexMan.Type_MiscPatch);			// "finished"
 
-		lnametexts[0] = StringTable.Localize(wbstartstruct.thisname);		
+		lnametexts[0] = StringTable.Localize(wbstartstruct.thisname);
 		lnametexts[1] = StringTable.Localize(wbstartstruct.nextname);
 		authortexts[0] = StringTable.Localize(wbstartstruct.thisauthor);
 		authortexts[1] = StringTable.Localize(wbstartstruct.nextauthor);
@@ -947,20 +993,52 @@ class StatusScreen abstract play version("2.5")
 		bg = InterBackground.Create(wbs);
 		noautostartmap = bg.LoadBackground(false);
 		initStats();
-		
+
 		wrapwidth = cwidth = screen.GetWidth();
 		cheight = screen.GetHeight();
 		scalemode = -1;
 		scaleFactorX = CleanXfac;
 		scaleFactorY = CleanYfac;
 	}
-	
-	
+
 	protected virtual void initStats() {}
 	protected virtual void updateStats() {}
 	protected virtual void drawStats() {}
 
-	native static int, int, int GetPlayerWidths();
-	native static Color GetRowColor(PlayerInfo player, bool highlight);
-	native static void GetSortedPlayers(in out Array<int> sorted, bool teamplay);
+	static int, int, int GetPlayerWidths()
+	{
+		int maxNameWidth;
+		int maxScoreWidth;
+		int maxIconHeight;
+
+		StatusBar.Scoreboard_GetPlayerWidths(maxNameWidth, maxScoreWidth, maxIconHeight);
+
+		return maxNameWidth, maxScoreWidth, maxIconHeight;
+	}
+
+	static Color GetRowColor(PlayerInfo player, bool highlight)
+	{
+		return StatusBar.Scoreboard_GetRowColor(player, highlight);
+	}
+
+	static void GetSortedPlayers(in out Array<int> sorted, bool teamplay)
+	{
+		sorted.clear();
+		for(int i = 0; i < MAXPLAYERS; i++)
+		{
+			if(playeringame[i])
+			{
+				sorted.Push(i);
+			}
+		}
+
+		if(teamplay)
+		{
+			StatusBar.Scoreboard_SortPlayers(sorted, BaseStatusBar.Scoreboard_CompareByTeams);
+		}
+		else
+		{
+			StatusBar.Scoreboard_SortPlayers(sorted, BaseStatusBar.Scoreboard_CompareByPoints);
+		}
+	}
 }

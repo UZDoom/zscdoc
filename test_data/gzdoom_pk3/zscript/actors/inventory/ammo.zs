@@ -38,15 +38,20 @@ class Ammo : Inventory
 	int BackpackAmount;
 	int BackpackMaxAmount;
 	meta int DropAmount;
+	meta double DropAmmoFactorMultiplier;
 	
 	property BackpackAmount: BackpackAmount;
 	property BackpackMaxAmount: BackpackMaxAmount;
 	property DropAmount: DropAmount;
+	property DropAmmoFactorMultiplier: DropAmmoFactorMultiplier;
 
 	Default
 	{
 		+INVENTORY.KEEPDEPLETED
+		+WEAPONSPAWN
 		Inventory.PickupSound "misc/ammo_pkup";
+		
+		Ammo.DropAmmoFactorMultiplier 1;
 	}
 
 	//===========================================================================
@@ -94,7 +99,7 @@ class Ammo : Inventory
 
 				if (!item.bIgnoreSkill)
 				{ // extra ammo in baby mode and nightmare mode
-					receiving = int(receiving * G_SkillPropertyFloat(SKILLP_AmmoFactor));
+					receiving = int(receiving * (G_SkillPropertyFloat(SKILLP_AmmoFactor) * sv_ammofactor));
 				}
 				int oldamount = Amount;
 
@@ -134,13 +139,16 @@ class Ammo : Inventory
 
 	override Inventory CreateCopy (Actor other)
 	{
+		if (IsCreatingLocalCopy())
+			return Super.CreateCopy(other);
+
 		Inventory copy;
 		int amount = Amount;
 
 		// extra ammo in baby mode and nightmare mode
 		if (!bIgnoreSkill)
 		{
-			amount = int(amount * G_SkillPropertyFloat(SKILLP_AmmoFactor));
+			amount = int(amount * (G_SkillPropertyFloat(SKILLP_AmmoFactor) * sv_ammofactor));
 		}
 
 		let type = GetParentAmmo();
@@ -201,6 +209,8 @@ class Ammo : Inventory
 			dropammofactor = 0.5;
 			ignoreskill = false;
 		}
+        
+        dropammofactor *= DropAmmoFactorMultiplier;
 
 		if (dropamount > 0)
 		{
@@ -232,6 +242,11 @@ class Ammo : Inventory
 class BackpackItem : Inventory
 {
 	bool bDepleted;
+
+	Default
+	{
+		+WEAPONSPAWN
+	}
 	
 	//===========================================================================
 	//
@@ -244,6 +259,9 @@ class BackpackItem : Inventory
 
 	override Inventory CreateCopy (Actor other)
 	{
+		if (IsCreatingLocalCopy())
+			return Super.CreateCopy(other);
+			
 		// Find every unique type of ammoitem. Give it to the player if
 		// he doesn't have it already, and double its maximum capacity.
 		uint end = AllActorClasses.Size();
@@ -258,7 +276,7 @@ class BackpackItem : Inventory
 				// extra ammo in baby mode and nightmare mode
 				if (!bIgnoreSkill)
 				{
-					amount = int(amount * G_SkillPropertyFloat(SKILLP_AmmoFactor));
+					amount = int(amount * (G_SkillPropertyFloat(SKILLP_AmmoFactor) * sv_ammofactor));
 				}
 				if (amount < 0) amount = 0;
 				if (ammoitem == NULL)
@@ -323,7 +341,7 @@ class BackpackItem : Inventory
 						// extra ammo in baby mode and nightmare mode
 						if (!bIgnoreSkill)
 						{
-							amount = int(amount * G_SkillPropertyFloat(SKILLP_AmmoFactor));
+							amount = int(amount * (G_SkillPropertyFloat(SKILLP_AmmoFactor) * sv_ammofactor));
 						}
 						ammoitem.Amount += amount;
 						if (ammoitem.Amount > ammoitem.MaxAmount && !sv_unlimited_pickup)

@@ -9,6 +9,7 @@ Class SuperMap : MapRevealer
 		+FLOATBOB
 		Inventory.MaxAmount 0;
 		Inventory.PickupMessage "$TXT_ITEMSUPERMAP";
+		Tag "$TAG_ITEMSUPERMAP";
 	}
 	States
 	{
@@ -53,6 +54,7 @@ Class ArtiTomeOfPower : PowerupGiver
 	{
 		+COUNTITEM
 		+FLOATBOB
+		+WEAPONSPAWN
 		Inventory.PickupFlash "PickupFlash";
 		Inventory.Icon "ARTIPWBK";
 		Powerup.Type "PowerWeaponlevel2";
@@ -66,28 +68,26 @@ Class ArtiTomeOfPower : PowerupGiver
 		Loop;
 	}
 	
-	override bool Use (bool pickup)
+	override bool Use(bool pickup)
 	{
-		Playerinfo p = Owner.player;
-		if (p && p.morphTics && (p.MorphStyle & MRF_UNDOBYTOMEOFPOWER))
-		{ // Attempt to undo chicken
-			if (!p.mo.UndoPlayerMorph (p, MRF_UNDOBYTOMEOFPOWER))
-			{ // Failed
-				if (!(p.MorphStyle & MRF_FAILNOTELEFRAG))
-				{
-					Owner.DamageMobj (null, null, TELEFRAG_DAMAGE, 'Telefrag');
-				}
+		EMorphFlags mStyle = Owner.GetMorphStyle();
+		if (Owner.Alternative && (mStyle & MRF_UNDOBYTOMEOFPOWER))
+		{
+			// Attempt to undo chicken.
+			if (!Owner.Unmorph(Owner, MRF_UNDOBYTOMEOFPOWER))
+			{
+				if (!(mStyle & MRF_FAILNOTELEFRAG))
+					Owner.DamageMobj(null, null, TELEFRAG_DAMAGE, 'Telefrag');
 			}
-			else
-			{ // Succeeded
-				Owner.A_StartSound ("*evillaugh", CHAN_VOICE);
+			else if (Owner.player)
+			{
+				Owner.A_StartSound("*evillaugh", CHAN_VOICE);
 			}
+
 			return true;
 		}
-		else
-		{
-			return Super.Use (pickup);
-		}
+
+		return Super.Use(pickup);
 	}
 	
 }
@@ -130,6 +130,7 @@ Class ArtiTimeBomb : Inventory
 	{
 		+COUNTITEM
 		+FLOATBOB
+		+WEAPONSPAWN
 		Inventory.PickupFlash "PickupFlash";
 		+INVENTORY.INVBAR
 		+INVENTORY.FANCYPICKUPSOUND

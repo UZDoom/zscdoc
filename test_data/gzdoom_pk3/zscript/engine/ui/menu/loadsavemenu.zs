@@ -38,6 +38,7 @@ struct SaveGameNode native
 {
 	native String SaveTitle;
 	native readonly String Filename;
+	native readonly String UUID;
 	native bool bOldVersion;
 	native bool bMissingWads;
 	native bool bNoDelete;
@@ -68,6 +69,7 @@ struct SavegameManager native ui
 	native SaveGameNode GetSavegame(int i);
 	native void InsertNewSaveNode();
 	native bool RemoveNewSaveNode();
+	native int RemoveUUIDSaveSlots();
 
 }
 
@@ -87,7 +89,7 @@ class LoadSaveMenu : ListMenu
 	int listboxLeft;
 	int listboxTop;
 	int listboxWidth;
-	
+
 	int listboxRows;
 	int listboxHeight;
 	int listboxRight;
@@ -101,10 +103,10 @@ class LoadSaveMenu : ListMenu
 	bool mEntering;
 	TextEnterMenu mInput;
 	double FontScale;
-	
+
 	BrokenLines BrokenSaveComment;
 
-	
+
 
 	//=============================================================================
 	//
@@ -119,13 +121,13 @@ class LoadSaveMenu : ListMenu
 		manager.ReadSaveStrings();
 		SetWindows();
 	}
-	
+
 	private void SetWindows()
 	{
 		bool aspect43 = true;
 		int Width43 = screen.GetHeight() * 4 / 3;
 		int Left43 = (screen.GetWidth() - Width43) / 2;
-		
+
 		double wScale = Width43 / 640.;
 
 		savepicLeft = Left43 + int(20 * wScale);
@@ -135,7 +137,7 @@ class LoadSaveMenu : ListMenu
 
 		FontScale = max(screen.GetHeight() / 480, 1);
 		rowHeight = int(max((NewConsoleFont.GetHeight() + 1) * FontScale, 1));
-		
+
 		listboxLeft = savepicLeft + savepicWidth + int(20*wScale);
 		listboxTop = savepicTop;
 		listboxWidth = Width43 + Left43 - listboxLeft - int(30 * wScale);
@@ -151,7 +153,7 @@ class LoadSaveMenu : ListMenu
 		commentRows = commentHeight / rowHeight;
 	}
 
-	
+
 	//=============================================================================
 	//
 	//
@@ -202,7 +204,7 @@ class LoadSaveMenu : ListMenu
 				if (Selected >= manager.SavegameCount()) Selected = 0;
 				String text = (Selected == -1 || !manager.GetSavegame(Selected).bOldVersion)? Stringtable.Localize("$MNU_NOPICTURE") : Stringtable.Localize("$MNU_DIFFVERSION");
 				int textlen = NewSmallFont.StringWidth(text);
-				
+
 				screen.DrawText (NewSmallFont, Font.CR_GOLD, (savepicLeft + savepicWidth / 2) / FontScale - textlen/2,
 					(savepicTop+(savepicHeight-rowHeight)/2) / FontScale, text, DTA_VirtualWidthF, screen.GetWidth() / FontScale, DTA_VirtualHeightF, screen.GetHeight() / FontScale, DTA_KeepRatio, true);
 			}
@@ -218,7 +220,7 @@ class LoadSaveMenu : ListMenu
 			screen.DrawText(NewConsoleFont, Font.CR_ORANGE, commentLeft / FontScale, (commentTop + rowHeight * i) / FontScale, BrokenSaveComment.StringAt(i),
 				DTA_VirtualWidthF, screen.GetWidth() / FontScale, DTA_VirtualHeightF, screen.GetHeight() / FontScale, DTA_KeepRatio, true);
 		}
-		
+
 
 		// Draw file area
 		DrawFrame (listboxLeft, listboxTop, listboxWidth, listboxHeight);
@@ -257,7 +259,7 @@ class LoadSaveMenu : ListMenu
 			}
 
 			screen.SetClipRect(listboxLeft, listboxTop+rowHeight*i, listboxRight, listboxTop+rowHeight*(i+1));
-			
+
 			if (j == Selected)
 			{
 				screen.Clear (listboxLeft, listboxTop+rowHeight*i, listboxRight, listboxTop+rowHeight*(i+1), mEntering ? Color(255,255,0,0) : Color(255,0,0,255));
@@ -296,6 +298,16 @@ class LoadSaveMenu : ListMenu
 	//
 	//
 	//=============================================================================
+
+	virtual void TryDeleteMessage()
+	{
+		if (Selected != -1 && Selected < manager.SavegameCount())
+		{
+			String EndString;
+			EndString = String.Format("%s%s%s%s?\n\n%s", Stringtable.Localize("$MNU_DELETESG"), TEXTCOLOR_WHITE, manager.GetSavegame(Selected).SaveTitle, TEXTCOLOR_NORMAL, Stringtable.Localize("$PRESSYN"));
+			StartMessage (EndString, 0);
+		}
+	}
 
 	override bool MenuEvent (int mkey, bool fromcontroller)
 	{
@@ -371,6 +383,14 @@ class LoadSaveMenu : ListMenu
 			}
 			return true;
 
+		case MKEY_Clear:
+			// This is handled by OnUIEvent for keyboard
+			if (fromcontroller == true)
+			{
+				TryDeleteMessage();
+			}
+			return true;
+
 		case MKEY_Enter:
 			return false;	// This event will be handled by the subclasses
 
@@ -388,7 +408,7 @@ class LoadSaveMenu : ListMenu
 			return Super.MenuEvent(mkey, fromcontroller);
 		}
 	}
-	
+
 	//=============================================================================
 	//
 	//
@@ -422,8 +442,8 @@ class LoadSaveMenu : ListMenu
 
 		return Super.MouseEvent(type, x, y);
 	}
-	
-	
+
+
 	//=============================================================================
 	//
 	//
@@ -444,11 +464,7 @@ class LoadSaveMenu : ListMenu
 					return true;
 
 				case UIEvent.Key_DEL:
-					{
-						String EndString;
-						EndString = String.Format("%s%s%s%s?\n\n%s", Stringtable.Localize("$MNU_DELETESG"), TEXTCOLOR_WHITE, manager.GetSavegame(Selected).SaveTitle, TEXTCOLOR_NORMAL, Stringtable.Localize("$PRESSYN"));
-						StartMessage (EndString, 0);
-					}
+					TryDeleteMessage();
 					return true;
 				}
 			}
@@ -466,13 +482,13 @@ class LoadSaveMenu : ListMenu
 		return Super.OnUIEvent(ev);
 	}
 
-	
+
 }
 
 class SaveMenu : LoadSaveMenu
 {
 	String mSaveName;
-	
+
 	//=============================================================================
 	//
 	//
@@ -483,8 +499,8 @@ class SaveMenu : LoadSaveMenu
 	{
 		Super.Init(parent, desc);
 		manager.InsertNewSaveNode();
-		TopItem = 0;
 		Selected = manager.ExtractSaveData (-1);
+		TopItem = MAX(0, Selected - listboxRows + 1);
 		UpdateSaveComment();
 	}
 
@@ -508,7 +524,18 @@ class SaveMenu : LoadSaveMenu
 	//
 	//
 	//=============================================================================
-	
+
+	override void TryDeleteMessage()
+	{
+		// cannot delete 'new save game' item
+		if (Selected == 0)
+		{
+			return;
+		}
+
+		super.TryDeleteMessage();
+	}
+
 	override bool MenuEvent (int mkey, bool fromcontroller)
 	{
 		if (Super.MenuEvent(mkey, fromcontroller)) 
@@ -574,11 +601,6 @@ class SaveMenu : LoadSaveMenu
 			{
 				switch (ev.KeyChar)
 				{
-				case UIEvent.Key_DEL:
-					// cannot delete 'new save game' item
-					if (Selected == 0) return true;
-					break;
-
 				case 78://'N':
 					Selected = TopItem = 0;
 					manager.UnloadSaveData ();
@@ -603,7 +625,7 @@ class SaveMenu : LoadSaveMenu
 			mSaveName = "";
 		}
 	}
-	
+
 }
 
 //=============================================================================
@@ -623,8 +645,8 @@ class LoadMenu : LoadSaveMenu
 	override void Init(Menu parent, ListMenuDescriptor desc)
 	{
 		Super.Init(parent, desc);
-		TopItem = 0;
 		Selected = manager.ExtractSaveData (-1);
+		TopItem = MAX(0, Selected - listboxRows + 1);
 		UpdateSaveComment();
 	}
 
