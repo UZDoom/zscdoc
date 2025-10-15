@@ -536,6 +536,14 @@ hr {
   margin: 0;
 }
 
+.flags_info {
+  margin-top: 4px;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: baseline;
+}
+
 div {
   margin: 0;
 }

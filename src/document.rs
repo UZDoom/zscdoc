@@ -605,6 +605,25 @@ pub fn transform_deprecated(d: &hir::Deprecated) -> Deprecated {
     }
 }
 
+const CLASS_FLAG_ORDER: [hir::ClassDefinitionFlags; 5] = [
+    hir::ClassDefinitionFlags::ABSTRACT,
+    hir::ClassDefinitionFlags::NATIVE,
+    hir::ClassDefinitionFlags::UI,
+    hir::ClassDefinitionFlags::PLAY,
+    hir::ClassDefinitionFlags::FINAL,
+];
+
+fn class_flag_to_string(flag: hir::ClassDefinitionFlags) -> &'static str {
+    match flag {
+        hir::ClassDefinitionFlags::ABSTRACT => "abstract",
+        hir::ClassDefinitionFlags::NATIVE => "native",
+        hir::ClassDefinitionFlags::UI => "ui",
+        hir::ClassDefinitionFlags::PLAY => "play",
+        hir::ClassDefinitionFlags::FINAL => "final",
+        _ => panic!(),
+    }
+}
+
 fn class_doc(
     name: &str,
     context: &[NameSymbol],
@@ -613,6 +632,32 @@ fn class_doc(
     files: &Files,
     item_provider: &ItemProvider,
 ) -> Class {
+    let mut def_flags = SourceCodeWithLinks { sections: vec![] };
+    for f in CLASS_FLAG_ORDER {
+        if !def_flags.sections.is_empty() {
+            def_flags.add_no_link(" ");
+        }
+        if c.flags.contains(f) {
+            def_flags.add_no_link(class_flag_to_string(f));
+        }
+    }
+    let sealed = c.sealed.as_ref().map(|s| {
+        let mut ret = SourceCodeWithLinks { sections: vec![] };
+        for i in s {
+            if !ret.sections.is_empty() {
+                ret.add_no_link(", ");
+            }
+            add_type_if_possible(
+                files.text_from_span(i.span),
+                Some(i),
+                item_provider,
+                context,
+                false,
+                &mut ret,
+            );
+        }
+        ret
+    });
     let mut class_to_add = Class {
         context: context_with(context, c.name.symbol),
         name: name.to_string(),
@@ -658,6 +703,8 @@ fn class_doc(
         inner_enums: vec![],
         constants: vec![],
         properties: vec![],
+        sealed,
+        def_flags,
         flags: vec![],
         deprecated: c.deprecated.as_ref().map(transform_deprecated),
     };
@@ -891,6 +938,23 @@ fn class_doc(
     class_to_add
 }
 
+const STRUCT_FLAG_ORDER: [hir::StructDefinitionFlags; 4] = [
+    hir::StructDefinitionFlags::CLEAR_SCOPE,
+    hir::StructDefinitionFlags::NATIVE,
+    hir::StructDefinitionFlags::UI,
+    hir::StructDefinitionFlags::PLAY,
+];
+
+fn struct_flag_to_string(flag: hir::StructDefinitionFlags) -> &'static str {
+    match flag {
+        hir::StructDefinitionFlags::CLEAR_SCOPE => "clearscope",
+        hir::StructDefinitionFlags::NATIVE => "native",
+        hir::StructDefinitionFlags::UI => "ui",
+        hir::StructDefinitionFlags::PLAY => "play",
+        _ => panic!(),
+    }
+}
+
 fn struct_doc(
     name: &str,
     no_context_name: &str,
@@ -899,6 +963,15 @@ fn struct_doc(
     files: &Files,
     item_provider: &ItemProvider,
 ) -> Struct {
+    let mut def_flags = SourceCodeWithLinks { sections: vec![] };
+    for f in STRUCT_FLAG_ORDER {
+        if !def_flags.sections.is_empty() {
+            def_flags.add_no_link(" ");
+        }
+        if s.flags.contains(f) {
+            def_flags.add_no_link(struct_flag_to_string(f));
+        }
+    }
     let mut struct_to_add = Struct {
         context: context_with(context, s.name.symbol),
         name: name.to_string(),
@@ -913,6 +986,7 @@ fn struct_doc(
         private: VariablesAndFunctions::default(),
         inner_enums: vec![],
         constants: vec![],
+        def_flags,
         deprecated: s.deprecated.as_ref().map(transform_deprecated),
     };
     for (_, node) in s.inners.iter() {

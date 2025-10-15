@@ -951,6 +951,24 @@ impl Class {
                                 ))
                             }
                             {
+                                self.sealed.as_ref().map(|s| html!(
+                                    <div class="flags_info info">
+                                        "Sealed - Allowed Inheritors:"
+                                        { s.render(base) }
+                                    </div>
+                                ))
+                            }
+                            {
+                                if !self.def_flags.sections.is_empty() {
+                                    Some(html!(
+                                        <div class="flags_info info">
+                                            "Flags:"
+                                            { self.def_flags.render(base) }
+                                        </div>
+                                    ))
+                                } else { None }
+                            }
+                            {
                                 self.deprecated.as_ref().map(|d| html!(
                                     <div class="info deprecated">
                                         <span class="info_icon">"🛇"</span>
@@ -1093,6 +1111,16 @@ impl Struct {
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
+                            {
+                                if !self.def_flags.sections.is_empty() {
+                                    Some(html!(
+                                        <div class="flags_info info">
+                                            "Flags:"
+                                            { self.def_flags.render(base) }
+                                        </div>
+                                    ))
+                                } else { None }
+                            }
                             {
                                 self.deprecated.as_ref().map(|d| html!(
                                     <div class="info deprecated">

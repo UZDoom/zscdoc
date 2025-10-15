@@ -120,6 +120,8 @@ pub struct Class {
     pub inner_enums: Vec<Enum>,
     pub constants: Vec<Constant>,
     pub properties: Vec<Property>,
+    pub def_flags: SourceCodeWithLinks,
+    pub sealed: Option<SourceCodeWithLinks>,
     pub flags: Vec<Flag>,
     pub deprecated: Option<Deprecated>,
 }
@@ -137,6 +139,7 @@ pub struct Struct {
     pub private: VariablesAndFunctions,
     pub inner_enums: Vec<Enum>,
     pub constants: Vec<Constant>,
+    pub def_flags: SourceCodeWithLinks,
     pub deprecated: Option<Deprecated>,
 }
 
