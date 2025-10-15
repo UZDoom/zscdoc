@@ -1112,7 +1112,10 @@ pub fn hir_to_doc_structures(
                 docs.classes.push(class_to_add);
             }
             hir::TopLevelDefinitionKind::Struct(s) => {
-                if should_skip(s.doc_comment.as_ref()) {
+                if should_skip(s.doc_comment.as_ref())
+                    || s.flags
+                        .contains(hir::StructDefinitionFlags::UNSAFE_INTERNAL)
+                {
                     continue;
                 }
                 let struct_to_add = struct_doc(name, name, &[], s, files, item_provider);
