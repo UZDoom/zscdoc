@@ -48,7 +48,7 @@ impl SourceCodeWithLinks {
     }
 }
 
-const FUNCTION_FLAG_ORDER: [hir::FunctionFlags; 14] = [
+const FUNCTION_FLAG_ORDER: [hir::FunctionFlags; 15] = [
     hir::FunctionFlags::PRIVATE,
     hir::FunctionFlags::PROTECTED,
     hir::FunctionFlags::NATIVE,
@@ -61,6 +61,7 @@ const FUNCTION_FLAG_ORDER: [hir::FunctionFlags; 14] = [
     hir::FunctionFlags::UI,
     hir::FunctionFlags::PLAY,
     hir::FunctionFlags::CLEAR_SCOPE,
+    hir::FunctionFlags::UNSAFE_CLEAR_SCOPE,
     hir::FunctionFlags::VIRTUAL_SCOPE,
     hir::FunctionFlags::TRANSIENT,
 ];
@@ -80,6 +81,7 @@ fn function_flag_to_string(flag: hir::FunctionFlags) -> &'static str {
         hir::FunctionFlags::UI => "ui",
         hir::FunctionFlags::PLAY => "play",
         hir::FunctionFlags::CLEAR_SCOPE => "clearscope",
+        hir::FunctionFlags::UNSAFE_CLEAR_SCOPE => "clearscope",
         hir::FunctionFlags::VIRTUAL_SCOPE => "virtualscope",
         _ => panic!(),
     }
