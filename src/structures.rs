@@ -121,6 +121,7 @@ pub struct Class {
     pub constants: Vec<Constant>,
     pub properties: Vec<Property>,
     pub flags: Vec<Flag>,
+    pub deprecated: Option<Deprecated>,
 }
 
 #[derive(Debug, Clone)]
@@ -136,6 +137,7 @@ pub struct Struct {
     pub private: VariablesAndFunctions,
     pub inner_enums: Vec<Enum>,
     pub constants: Vec<Constant>,
+    pub deprecated: Option<Deprecated>,
 }
 
 #[derive(Debug, Clone)]

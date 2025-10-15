@@ -659,6 +659,7 @@ fn class_doc(
         constants: vec![],
         properties: vec![],
         flags: vec![],
+        deprecated: c.deprecated.as_ref().map(transform_deprecated),
     };
     for (_, node) in c.inners.iter() {
         let inner_name = files.text_from_span(node[0].name().span);
@@ -912,6 +913,7 @@ fn struct_doc(
         private: VariablesAndFunctions::default(),
         inner_enums: vec![],
         constants: vec![],
+        deprecated: s.deprecated.as_ref().map(transform_deprecated),
     };
     for (_, node) in s.inners.iter() {
         let inner_name = files.text_from_span(node[0].name().span);

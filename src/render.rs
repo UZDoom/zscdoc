@@ -950,6 +950,22 @@ impl Class {
                                     </div>
                                 ))
                             }
+                            {
+                                self.deprecated.as_ref().map(|d| html!(
+                                    <div class="info deprecated">
+                                        <span class="info_icon">"🛇"</span>
+                                        "deprecated since "
+                                        { text!(&d.version) }
+                                        {
+                                            if !d.reason.is_empty() {
+                                                Some(text!(format!(": {}", &d.reason)))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                    </div>
+                                ))
+                            }
                         </div>
                         { render_doc_vis_toggle_button(&self.doc_comment, docs_id) }
                     </div>
@@ -1077,6 +1093,22 @@ impl Struct {
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
+                            {
+                                self.deprecated.as_ref().map(|d| html!(
+                                    <div class="info deprecated">
+                                        <span class="info_icon">"🛇"</span>
+                                        "deprecated since "
+                                        { text!(&d.version) }
+                                        {
+                                            if !d.reason.is_empty() {
+                                                Some(text!(format!(": {}", &d.reason)))
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                    </div>
+                                ))
+                            }
                         </div>
                         { render_doc_vis_toggle_button(&self.doc_comment, &docs_id) }
                     </div>
