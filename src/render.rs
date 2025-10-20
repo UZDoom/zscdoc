@@ -445,7 +445,7 @@ impl SourceCodeWithLinks {
             NonIndented(Vec<&'a SourceCodeSection>),
             Indented(Vec<&'a SourceCodeSection>),
         }
-        fn group_multiline_sections(sections: &[SourceCodeSection]) -> Vec<MultilineSection> {
+        fn group_multiline_sections(sections: &[SourceCodeSection]) -> Vec<MultilineSection<'_>> {
             let mut multiline_sections = vec![];
             let mut cur_multiline_section = vec![];
             let mut indenting = false;
