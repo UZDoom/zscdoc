@@ -209,3 +209,8 @@ impl Dependencies {
             .map(|x| x.link.clone())
     }
 }
+
+pub struct BaseUrl {
+    pub template: String,
+    pub filled: String,
+}

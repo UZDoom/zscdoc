@@ -14,7 +14,7 @@ mod search;
 
 use crate::{
     builtin::BuiltinTypeFromFile, cli::*, coverage::coverage_breakdown, item::ItemProvider,
-    render::render_from_markdown,
+    render::render_from_markdown, structures::BaseUrl,
 };
 use clap::Parser;
 use itertools::Itertools;
@@ -90,6 +90,19 @@ struct MarkdownFile {
     title: String,
 }
 
+#[derive(serde::Deserialize)]
+pub struct VersionItem {
+    url_part: String,
+    nice_name: String,
+    latest: bool,
+}
+
+#[derive(serde::Deserialize)]
+pub struct VersionInfo {
+    current: String,
+    versions: Vec<VersionItem>,
+}
+
 #[derive(serde::Deserialize, Debug)]
 struct CopyFile {
     filename: String,
@@ -114,7 +127,8 @@ fn save_docs_to_folder(
     favicon: Option<&[u8]>,
     markdown_files: &[MarkdownFileToRender],
     copy_files: &[CopyFileToRender],
-    base: &str,
+    base: &BaseUrl,
+    version_info: Option<VersionInfo>,
 ) -> anyhow::Result<()> {
     use std::fs::*;
     use std::io::*;
@@ -151,6 +165,7 @@ fn save_docs_to_folder(
                     &m.output_filename,
                     item_provider,
                     base,
+                    version_info.as_ref(),
                 )
             )
             .as_bytes(),
@@ -165,7 +180,7 @@ fn save_docs_to_folder(
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
-                docs.render_summary_page(item_provider, base)
+                docs.render_summary_page(item_provider, base, version_info.as_ref())
             )
             .as_bytes(),
         )?;
@@ -175,7 +190,7 @@ fn save_docs_to_folder(
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
-                class.render(&docs.name, item_provider, base)
+                class.render(&docs.name, item_provider, base, version_info.as_ref())
             )
             .as_bytes(),
         )?;
@@ -184,7 +199,7 @@ fn save_docs_to_folder(
             file.write_all(
                 format!(
                     "<!DOCTYPE html>{}",
-                    strukt.render(&docs.name, item_provider, base)
+                    strukt.render(&docs.name, item_provider, base, version_info.as_ref())
                 )
                 .as_bytes(),
             )?;
@@ -193,7 +208,7 @@ fn save_docs_to_folder(
                 file.write_all(
                     format!(
                         "<!DOCTYPE html>{}",
-                        enm.render(&docs.name, item_provider, base)
+                        enm.render(&docs.name, item_provider, base, version_info.as_ref())
                     )
                     .as_bytes(),
                 )?;
@@ -204,7 +219,7 @@ fn save_docs_to_folder(
             file.write_all(
                 format!(
                     "<!DOCTYPE html>{}",
-                    enm.render(&docs.name, item_provider, base)
+                    enm.render(&docs.name, item_provider, base, version_info.as_ref())
                 )
                 .as_bytes(),
             )?;
@@ -215,7 +230,7 @@ fn save_docs_to_folder(
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
-                strukt.render(&docs.name, item_provider, base)
+                strukt.render(&docs.name, item_provider, base, version_info.as_ref())
             )
             .as_bytes(),
         )?;
@@ -224,7 +239,7 @@ fn save_docs_to_folder(
             file.write_all(
                 format!(
                     "<!DOCTYPE html>{}",
-                    enm.render(&docs.name, item_provider, base)
+                    enm.render(&docs.name, item_provider, base, version_info.as_ref())
                 )
                 .as_bytes(),
             )?;
@@ -235,7 +250,7 @@ fn save_docs_to_folder(
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
-                enm.render(&docs.name, item_provider, base)
+                enm.render(&docs.name, item_provider, base, version_info.as_ref())
             )
             .as_bytes(),
         )?;
@@ -245,7 +260,7 @@ fn save_docs_to_folder(
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
-                builtin.render(&docs.name, item_provider, base)
+                builtin.render(&docs.name, item_provider, base, version_info.as_ref())
             )
             .as_bytes(),
         )?;
@@ -522,6 +537,43 @@ fn main() -> anyhow::Result<()> {
 
     let base_url = args.base_url.unwrap_or(config.archive.base_url);
 
+    let versions: Option<Vec<VersionItem>> = args
+        .versions
+        .as_ref()
+        .map(|v| serde_json::from_str(v))
+        .transpose()?;
+
+    let version_info = if versions.is_some() || args.version.is_some() {
+        let Some(versions) = versions else {
+            anyhow::bail!("`--version-map` must be present if `--version` is")
+        };
+        let Some(version) = args.version else {
+            anyhow::bail!("`--version` must be present if `--version-map` is")
+        };
+        if !base_url.contains("<version>") {
+            anyhow::bail!(
+                "`--base-url` must contain the string <version> when version support is active"
+            )
+        }
+        Some(VersionInfo {
+            current: version,
+            versions,
+        })
+    } else {
+        None
+    };
+
+    let base_url = BaseUrl {
+        template: base_url.to_string(),
+        filled: base_url.replace(
+            "<version>",
+            &version_info
+                .as_ref()
+                .map(|v| v.current.clone())
+                .unwrap_or_else(|| "<version>".to_string()),
+        ),
+    };
+
     if let Some(c) = args.coverage {
         let breakdown = coverage_breakdown(
             docs.coverage(&config.archive.nice_name, &files)
@@ -539,6 +591,7 @@ fn main() -> anyhow::Result<()> {
             &markdown_files,
             &copy_files,
             &base_url,
+            version_info,
         )?;
         eprintln!("Documentation written to {}!", out);
     }

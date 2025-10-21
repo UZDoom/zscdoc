@@ -93,6 +93,26 @@ window.addEventListener("DOMContentLoaded", () => {
         }
     }
     {
+        const els = document.getElementsByClassName("version_static");
+        for (const el of els) {
+            el.classList.add("hide");
+        }
+    }
+    {
+        const els = (
+            document.getElementsByClassName("version_selector") as HTMLCollectionOf<HTMLSelectElement>
+        );
+        for (const el of els) {
+            el.classList.remove("hide");
+            const orig = el.value;
+            el.onchange = () => {
+                const cur = el.value;
+                el.value = orig;
+                window.location.href = cur;
+            }
+        }
+    }
+    {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const el = document.getElementById("search")!;
         el.style.display = "block";

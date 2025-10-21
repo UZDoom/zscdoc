@@ -203,6 +203,7 @@ body {
   top: 0;
   align-self: flex-start;
   z-index: 2;
+  align-items: center;
 
   @media (max-width: 480px) {
     display: flex;
@@ -542,6 +543,33 @@ hr {
   flex-direction: row;
   gap: 4px;
   align-items: baseline;
+}
+
+#version_area {
+  margin-top: 6px;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  font-family: "Roboto", sans-serif;
+}
+
+.version_selector {
+  margin: 0;
+  font-size: 12px;
+  font-family: "Roboto", sans-serif;
+}
+
+.version_static {
+  font-family: "Roboto", sans-serif;
+}
+
+.version_static_or_selector {
+  width: max-content;
+  height: max-content;
 }
 
 div {

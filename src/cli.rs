@@ -31,6 +31,21 @@ pub struct Args {
     )]
     pub delete_without_confirm: bool,
 
-    #[clap(long, help = "The base for URLs in links in the documentation")]
+    #[clap(
+        long,
+        help = "The base template for URLs in links in the documentation - include the string `<version>` to have it substituted with the value from`--version`"
+    )]
     pub base_url: Option<String>,
+
+    #[clap(
+        long,
+        help = r#"A JSON array of objects like {"url_part": "v4", "nice_name": "4.0 (Latest)", latest: true}"#
+    )]
+    pub versions: Option<String>,
+
+    #[clap(
+        long,
+        help = "The version currently being documented - this should match the `url_part` for one item in `--versions`"
+    )]
+    pub version: Option<String>,
 }

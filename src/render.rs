@@ -1,6 +1,6 @@
 #![allow(unused_braces)]
 
-use crate::structures::*;
+use crate::{structures::*, VersionInfo, VersionItem};
 
 use crate::item::ItemProvider;
 use axohtml::{
@@ -44,14 +44,15 @@ fn render_html_boilerplate(
     title: &str,
     body: Box<dyn FlowContent<String>>,
     sidebar_data: SidebarData,
-    base: &str,
+    base: &BaseUrl,
+    version_info: Option<&VersionInfo>,
 ) -> DOMTree<String> {
     html!(
         <html lang="en-US">
             <head>
                 <title> { text!(title) } </title>
-                <link rel="icon" type="image/x-icon" href={ prefix_href(base, "/favicon.png") }/>
-                <link rel="stylesheet" href={ prefix_href(base, "/main.css") }/>
+                <link rel="icon" type="image/x-icon" href={ prefix_href(&base.filled, "/favicon.png") }/>
+                <link rel="stylesheet" href={ prefix_href(&base.filled, "/main.css") }/>
                 <script src="main.bundle.js"></script>
                 <meta charset="UTF-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -59,12 +60,13 @@ fn render_html_boilerplate(
             <body>
                 <div id="header">
                     <button id="header_button">"☰"</button>
-                    <h1 id="header_main_link"><a href={ prefix_href(base, "/index.html") }>
+                    <h1 id="header_main_link"><a href={ prefix_href(&base.filled, "/index.html") }>
                         { text!(&sidebar_data.docs_name) } " Documentation"
                     </a></h1>
+                    { version_info.as_ref().map(|v| version_selector(v, base)) }
                 </div>
                 <div id="not_header">
-                    { render_sidebar(sidebar_data, base) }
+                    { render_sidebar(sidebar_data, base, version_info) }
                     <div id="inner">
                         <div id="search">
                             <input id="search_input" placeholder="Search"/>
@@ -97,7 +99,7 @@ fn render_doc_vis_toggle_button(
 fn md_event_map<'a>(
     event: pulldown_cmark::Event<'a>,
     i: Option<(&ItemProvider, &[zscript_parser::interner::NameSymbol])>,
-    base: &str,
+    base: &BaseUrl,
 ) -> pulldown_cmark::Event<'a> {
     use pulldown_cmark::{Event, Tag};
     let link_process = |ty, link: CowStr<'a>, title| match i {
@@ -128,7 +130,7 @@ fn broken_link_callback<'a>(
     b: BrokenLink<'a>,
     item_provider: &ItemProvider,
     context: &[zscript_parser::interner::NameSymbol],
-    base: &str,
+    base: &BaseUrl,
 ) -> Option<(CowStr<'a>, CowStr<'a>)> {
     match b.link_type {
         LinkType::Shortcut => {
@@ -155,7 +157,7 @@ pub fn render_doc_summary(
     text: &str,
     item_provider: &ItemProvider,
     context: &[zscript_parser::interner::NameSymbol],
-    base: &str,
+    base: &BaseUrl,
 ) -> Option<Box<dyn FlowContent<String>>> {
     if text.trim().is_empty() {
         return None;
@@ -252,7 +254,7 @@ fn render_doc_comment(
     id: &str,
     item_provider: &ItemProvider,
     context: &[zscript_parser::interner::NameSymbol],
-    base: &str,
+    base: &BaseUrl,
 ) -> Option<Box<dyn FlowContent<String>>> {
     if text.trim().is_empty() {
         return None;
@@ -360,14 +362,14 @@ impl LinkedSection {
         self.kind.get_style()
     }
 
-    fn get_href(&self, base: &str) -> String {
+    fn get_href(&self, base: &BaseUrl) -> String {
         let kind_href = self.kind.get_kind_href();
-        let prefix = self.link_prefix.as_deref().unwrap_or(base);
+        let prefix = self.link_prefix.as_deref().unwrap_or(&base.filled);
         prefix_href(prefix, &kind_href)
     }
 }
 impl SourceCodeSection {
-    fn render(&self, base: &str) -> Box<dyn PhrasingContent<String>> {
+    fn render(&self, base: &BaseUrl) -> Box<dyn PhrasingContent<String>> {
         match self {
             SourceCodeSection::NoLink(s) => text!(add_zws(s)),
             SourceCodeSection::Linked(l) => html!(
@@ -396,7 +398,7 @@ impl SourceCodeWithLinks {
     fn render_multiline_section(
         indent: bool,
         sections: &[&SourceCodeSection],
-        base: &str,
+        base: &BaseUrl,
     ) -> Box<dyn FlowContent<String>> {
         let classes: SpacedSet<axohtml::types::Class> = if indent {
             ["source_line", "indent"].try_into().unwrap()
@@ -420,7 +422,7 @@ impl SourceCodeWithLinks {
 
     fn render_singleline_section(
         sections: &[SourceCodeSection],
-        base: &str,
+        base: &BaseUrl,
     ) -> Box<dyn FlowContent<String>> {
         html!(
             <div class="source">
@@ -514,7 +516,7 @@ impl SourceCodeWithLinks {
         }
     }
 
-    fn render(&self, base: &str) -> Box<dyn FlowContent<String>> {
+    fn render(&self, base: &BaseUrl) -> Box<dyn FlowContent<String>> {
         self.render_with_func(
             |x, y| Self::render_multiline_section(x, y, base),
             |x| Self::render_singleline_section(x, base),
@@ -523,8 +525,7 @@ impl SourceCodeWithLinks {
 }
 
 impl MemberVariable {
-    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
-        let docs_id = format!("member.{}.docs", self.name);
+    fn render(&self, item_provider: &ItemProvider, base: &BaseUrl) -> Box<dyn FlowContent<String>> {
         let kind = if self.context.is_empty() {
             "global"
         } else {
@@ -533,7 +534,6 @@ impl MemberVariable {
         let docs_id = format!("{}.{}.docs", kind, self.name);
         html!(
             <div>
-                <div class="doc_row" id={ Id::new(format!("member.{}", self.name)) }>
                 <div class="doc_row" id={ Id::new(format!("{}.{}", kind, self.name)) }>
                     <div class="doc_main">
                         { self.def.render(base) }
@@ -564,7 +564,7 @@ impl MemberVariable {
 }
 
 impl Function {
-    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &BaseUrl) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("function.{}.docs", self.name);
         html!(
             <div>
@@ -609,7 +609,7 @@ impl Function {
 }
 
 impl Constant {
-    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &BaseUrl) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("constant.{}.docs", self.name);
         html!(
             <div>
@@ -627,7 +627,7 @@ impl Constant {
 }
 
 impl Property {
-    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &BaseUrl) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("property.{}.docs", self.name);
         html!(
             <div>
@@ -645,7 +645,7 @@ impl Property {
 }
 
 impl Flag {
-    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &BaseUrl) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("flag.{}.docs", self.name);
         html!(
             <div>
@@ -711,14 +711,14 @@ fn render_summary_grid<'a>(
     link_class: &'a str,
     data: &[SummaryGridRow<'a>],
     item_provider: &'a ItemProvider,
-    base: &'a str,
+    base: &'a BaseUrl,
 ) -> impl Iterator<Item = Box<dyn FlowContent<String>>> + 'a {
     render_section_from_slice(heading, heading_id, "summary_grid", data, false, move |c| {
         [
             html!(
                 <div class="summary_grid_name">
                     <code>
-                        <a href={ prefix_href(base, &c.link) } class={ link_class }>
+                        <a href={ prefix_href(&base.filled, &c.link) } class={ link_class }>
                             { text!(add_zws(&c.name)) }
                         </a>
                     </code>
@@ -737,7 +737,7 @@ fn render_summary_grid<'a>(
 fn render_members_functions_pair<'a>(
     (vis, mf, collapsed_by_default): &(&str, &VariablesAndFunctions, bool),
     item_provider: &'a ItemProvider,
-    base: &'a str,
+    base: &'a BaseUrl,
 ) -> impl IntoIterator<Item = Box<dyn FlowContent<String>>> + 'a {
     (render_section_from_slice(
         &format!("{vis} Member Variables"),
@@ -801,17 +801,55 @@ fn sidebar_sections_members_functions_pair<'a>(
     ))
 }
 
-fn render_sidebar(data: SidebarData, base: &str) -> Box<dyn FlowContent<String>> {
+fn version_selector(v: &VersionInfo, base: &BaseUrl) -> Box<dyn FlowContent<String>> {
+    html!(
+        <div class="version_static_or_selector">
+            <select name="version" class="version_selector hide" autocomplete="off">
+                { v.versions.iter().map(|VersionItem { url_part, nice_name, latest: _ }| html!(
+                    <option
+                        value={base.template.replace("<version>", url_part) + "/index.html"}
+                        selected={url_part == &v.current}
+                    >
+                        { text!(nice_name) }
+                    </option>
+                )) }
+            </select>
+            <div class="version_static">
+                { v.versions.iter().map(|VersionItem { url_part, nice_name, latest: _ }| {
+                    if url_part == &v.current {
+                        text!(nice_name)
+                    } else {
+                        text!("")
+                    }
+                }) }
+            </div>
+        </div>
+    )
+}
+
+fn render_sidebar(
+    data: SidebarData,
+    base: &BaseUrl,
+    version_info: Option<&VersionInfo>,
+) -> Box<dyn FlowContent<String>> {
     html!(
         <nav id="sidebar">
             <div id="sidebar_main_link_container">
                 <div class="sidebar_padder">
-                    <h1 id="sidebar_main_link"><a href={ prefix_href(base, "/index.html") }>
+                    <h1 id="sidebar_main_link"><a href={ prefix_href(&base.filled, "/index.html") }>
                         { text!(data.docs_name) } " Documentation"
                     </a></h1>
                 </div>
-                <hr/>
+                {
+                    version_info.as_ref().map(|v| html!(
+                        <div id="version_area" class="sidebar_text">
+                        <span>"Version"</span>
+                        { version_selector(v, base) }
+                        </div>
+                    ))
+                }
             </div>
+            <hr/>
             <div class="sidebar_padder">
                 <p id="sidebar_summary" class="sidebar_text">
                     { text!(add_zws(&data.title)) }
@@ -821,7 +859,7 @@ fn render_sidebar(data: SidebarData, base: &str) -> Box<dyn FlowContent<String>>
             { data.sections.iter().map(|s| match s {
                 SidebarSection::Header { text, link: Some(link) } => html!(
                     <div>
-                        <a class="sidebar_header sidebar_clickable" href={ prefix_href(base, link) } title={ text }>
+                        <a class="sidebar_header sidebar_clickable" href={ prefix_href(&base.filled, link) } title={ text }>
                             { text!(text) }
                         </a>
                         <hr/>
@@ -834,7 +872,7 @@ fn render_sidebar(data: SidebarData, base: &str) -> Box<dyn FlowContent<String>>
                     </div>
                 ) as Box<dyn FlowContent<_>>,
                 SidebarSection::Text { text, link } => html!(
-                    <a class="sidebar_link sidebar_clickable" href={ prefix_href(base, link) } title={ text }>
+                    <a class="sidebar_link sidebar_clickable" href={ prefix_href(&base.filled, link) } title={ text }>
                         { text!(text) }
                     </a>
                 ) as Box<dyn FlowContent<_>>
@@ -848,7 +886,8 @@ impl Class {
         &self,
         docs_name: &str,
         item_provider: &ItemProvider,
-        base: &str,
+        base: &BaseUrl,
+        version_info: Option<&VersionInfo>,
     ) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Constants", "#constants", &self.constants, |v| {
@@ -926,7 +965,7 @@ impl Class {
                         <div class="doc_main">
                             <h1 class="main_heading">
                                 "Class "
-                                <a href={ prefix_href(base, &format!("/class.{}.html", self.name)) } class="class">
+                                <a href={ prefix_href(&base.filled, &format!("/class.{}.html", self.name)) } class="class">
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
@@ -1067,6 +1106,7 @@ impl Class {
             ),
             sidebar_data,
             base,
+            version_info,
         )
     }
 }
@@ -1076,7 +1116,8 @@ impl Struct {
         &self,
         docs_name: &str,
         item_provider: &ItemProvider,
-        base: &str,
+        base: &BaseUrl,
+        version_info: Option<&VersionInfo>,
     ) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Constants", "#constants", &self.constants, |v| {
@@ -1118,7 +1159,7 @@ impl Struct {
                         <div class="doc_main">
                             <h1 class="main_heading">
                                 "Struct "
-                                <a href={ prefix_href(base, &format!("/struct.{}.html", self.name)) } class="struct">
+                                <a href={ prefix_href(&base.filled, &format!("/struct.{}.html", self.name)) } class="struct">
                                     { text!(add_zws(&self.name)) }
                                 </a>
                             </h1>
@@ -1185,6 +1226,7 @@ impl Struct {
             ),
             sidebar_data,
             base,
+            version_info,
         )
     }
 }
@@ -1194,7 +1236,8 @@ impl Builtin {
         &self,
         docs_name: &str,
         item_provider: &ItemProvider,
-        base: &str,
+        base: &BaseUrl,
+        version_info: Option<&VersionInfo>,
     ) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Constants", "#constants", &self.constants, |v| {
@@ -1237,7 +1280,7 @@ impl Builtin {
                             <h1 class="main_heading">
                                 "Builtin "
                                 <a
-                                    href={ prefix_href(base, &format!("/builtin.{}.html", self.name)) }
+                                    href={ prefix_href(&base.filled, &format!("/builtin.{}.html", self.name)) }
                                     class="builtin"
                                 >
                                     { text!(add_zws(&self.name)) }
@@ -1274,12 +1317,13 @@ impl Builtin {
             ),
             sidebar_data,
             base,
+            version_info,
         )
     }
 }
 
 impl Enumerator {
-    fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
+    fn render(&self, item_provider: &ItemProvider, base: &BaseUrl) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("enumerator.{}.docs", self.name);
         html!(
             <div>
@@ -1303,7 +1347,8 @@ impl Enum {
         &self,
         docs_name: &str,
         item_provider: &ItemProvider,
-        base: &str,
+        base: &BaseUrl,
+        version_info: Option<&VersionInfo>,
     ) -> DOMTree<String> {
         let sections =
             sidebar_sections_from_slice("Enumerators", "#enumerators", &self.enumerators, |v| {
@@ -1328,7 +1373,7 @@ impl Enum {
                             <h1 class="main_heading">
                                 "Enum "
                                 <a
-                                    href={ prefix_href(base, &format!("/enum.{}.html", self.name)) }
+                                    href={ prefix_href(&base.filled, &format!("/enum.{}.html", self.name)) }
                                     class="enum"
                                 >
                                     { text!(add_zws(&self.name)) }
@@ -1345,12 +1390,18 @@ impl Enum {
             ),
             sidebar_data,
             base,
+            version_info,
         )
     }
 }
 
 impl Documentation {
-    pub fn render_summary_page(&self, item_provider: &ItemProvider, base: &str) -> DOMTree<String> {
+    pub fn render_summary_page(
+        &self,
+        item_provider: &ItemProvider,
+        base: &BaseUrl,
+        version_info: Option<&VersionInfo>,
+    ) -> DOMTree<String> {
         let mut sections = vec![SidebarSection::Header {
             text: "Contents".to_string(),
             link: None,
@@ -1404,7 +1455,7 @@ impl Documentation {
                     <div class="doc_row">
                         <div class="doc_main">
                             <h1 class="main_heading">
-                                <a href={ prefix_href(base, "/index.html") }> { text!(&self.name) } </a>
+                                <a href={ prefix_href(&base.filled, "/index.html") }> { text!(&self.name) } </a>
                                 " Documentation"
                             </h1>
                         </div>
@@ -1494,6 +1545,7 @@ impl Documentation {
             ),
             sidebar_data,
             base,
+            version_info,
         )
     }
 }
@@ -1504,7 +1556,8 @@ pub fn render_from_markdown(
     markdown: &str,
     link: &str,
     item_provider: &ItemProvider,
-    base: &str,
+    base: &BaseUrl,
+    version_info: Option<&VersionInfo>,
 ) -> DOMTree<String> {
     let sections = vec![];
     let sidebar_data = SidebarData {
@@ -1519,7 +1572,7 @@ pub fn render_from_markdown(
                 <div class="doc_row">
                     <div class="doc_main">
                         <h1 class="main_heading">
-                            <a href={ prefix_href(base, &format!("/{}", link)) }> { text!(name) } </a>
+                            <a href={ prefix_href(&base.filled, &format!("/{}", link)) }> { text!(name) } </a>
                         </h1>
                     </div>
                 </div>
@@ -1529,5 +1582,6 @@ pub fn render_from_markdown(
         ),
         sidebar_data,
         base,
+        version_info,
     )
 }

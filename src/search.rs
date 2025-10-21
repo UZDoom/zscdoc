@@ -34,14 +34,14 @@ fn summarize(
     doc_comment: &str,
     item_provider: &ItemProvider,
     context: &[zscript_parser::interner::NameSymbol],
-    base: &str,
+    base: &BaseUrl,
 ) -> String {
     render_doc_summary(doc_comment, item_provider, context, base)
         .map(|x| x.to_string())
         .unwrap_or_default()
 }
 
-fn collect_class(c: &Class, res: &mut SearchResults, item_provider: &ItemProvider, base: &str) {
+fn collect_class(c: &Class, res: &mut SearchResults, item_provider: &ItemProvider, base: &BaseUrl) {
     res.results.push(SearchResult {
         name_prelude: "".to_string(),
         name: c.name.to_string(),
@@ -83,7 +83,12 @@ fn collect_class(c: &Class, res: &mut SearchResults, item_provider: &ItemProvide
     }
 }
 
-fn collect_struct(s: &Struct, res: &mut SearchResults, item_provider: &ItemProvider, base: &str) {
+fn collect_struct(
+    s: &Struct,
+    res: &mut SearchResults,
+    item_provider: &ItemProvider,
+    base: &BaseUrl,
+) {
     let split = s.name.split('.').collect_vec();
     let (last, prelude) = split.split_last().unwrap();
     let name_prelude = if prelude.is_empty() {
@@ -134,7 +139,12 @@ fn collect_struct(s: &Struct, res: &mut SearchResults, item_provider: &ItemProvi
     }
 }
 
-fn collect_builtin(b: &Builtin, res: &mut SearchResults, item_provider: &ItemProvider, base: &str) {
+fn collect_builtin(
+    b: &Builtin,
+    res: &mut SearchResults,
+    item_provider: &ItemProvider,
+    base: &BaseUrl,
+) {
     let split = b.name.split('.').collect_vec();
     let (last, prelude) = split.split_last().unwrap();
     let name_prelude = if prelude.is_empty() {
@@ -180,7 +190,7 @@ fn collect_builtin(b: &Builtin, res: &mut SearchResults, item_provider: &ItemPro
     }
 }
 
-fn collect_enum(e: &Enum, res: &mut SearchResults, item_provider: &ItemProvider, base: &str) {
+fn collect_enum(e: &Enum, res: &mut SearchResults, item_provider: &ItemProvider, base: &BaseUrl) {
     let split = e.name.split('.').collect_vec();
     let (last, prelude) = split.split_last().unwrap();
     let name_prelude = if prelude.is_empty() {
@@ -211,7 +221,7 @@ fn collect_enum(e: &Enum, res: &mut SearchResults, item_provider: &ItemProvider,
 pub fn collect_search_results(
     docs: &Documentation,
     item_provider: &ItemProvider,
-    base: &str,
+    base: &BaseUrl,
 ) -> SearchResults {
     let mut res = SearchResults { results: vec![] };
     for c in docs.constants.iter() {
