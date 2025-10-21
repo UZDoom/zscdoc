@@ -80,7 +80,7 @@ fn render_html_boilerplate(
                     <h1 id="header_main_link"><a href={ prefix_href(&base.filled, "/index.html") }>
                         { text!(&sidebar_data.docs_name) } " Documentation"
                     </a></h1>
-                    { version_info.as_ref().map(|v| version_selector(v, base)) }
+                    { version_info.as_ref().map(|v| version_selector(v, base, Some("Version"), "id_selector_header")) }
                 </div>
                 <div id="not_header">
                     { render_sidebar(sidebar_data, base, version_info) }
@@ -818,19 +818,35 @@ fn sidebar_sections_members_functions_pair<'a>(
     ))
 }
 
-fn version_selector(v: &VersionInfo, base: &BaseUrl) -> Box<dyn FlowContent<String>> {
+fn version_selector(
+    v: &VersionInfo,
+    base: &BaseUrl,
+    aria_label: Option<&str>,
+    id: &str,
+) -> Box<dyn FlowContent<String>> {
+    let mut select = html!(
+        <select
+            name="version"
+            class="version_selector hide"
+            autocomplete="off"
+            id={id}
+        >
+            { v.versions.iter().map(|VersionItem { url_part, nice_name, .. }| html!(
+                <option
+                    value={base.template.replace("<version>", url_part) + "/index.html"}
+                    selected={url_part == &v.current}
+                >
+                    { text!(nice_name) }
+                </option>
+            )) }
+        </select>
+    );
+    if let Some(l) = aria_label {
+        select.aria_attributes.push(("label", l.to_string()));
+    }
     html!(
         <div class="version_static_or_selector">
-            <select name="version" class="version_selector hide" autocomplete="off">
-                { v.versions.iter().map(|VersionItem { url_part, nice_name, .. }| html!(
-                    <option
-                        value={base.template.replace("<version>", url_part) + "/index.html"}
-                        selected={url_part == &v.current}
-                    >
-                        { text!(nice_name) }
-                    </option>
-                )) }
-            </select>
+            { select }
             <div class="version_static">
                 { v.versions.iter().map(|VersionItem { url_part, nice_name, .. }| {
                     if url_part == &v.current {
@@ -860,8 +876,8 @@ fn render_sidebar(
                 {
                     version_info.as_ref().map(|v| html!(
                         <div id="version_area" class="sidebar_text">
-                        <span>"Version"</span>
-                        { version_selector(v, base) }
+                        <label for="version_selector_sidebar">"Version"</label>
+                        { version_selector(v, base, None, "version_selector_sidebar") }
                         </div>
                     ))
                 }
