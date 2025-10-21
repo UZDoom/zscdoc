@@ -3,15 +3,15 @@
 use crate::structures::*;
 
 use crate::item::ItemProvider;
-use itertools::Itertools;
-use pulldown_cmark::{html, BrokenLink, CowStr, LinkType, Options, Parser};
-use typed_html::{
+use axohtml::{
     dom::DOMTree,
     elements::{FlowContent, PhrasingContent},
     html, text,
     types::{Id, SpacedSet},
     unsafe_text,
 };
+use itertools::Itertools;
+use pulldown_cmark::{html, BrokenLink, CowStr, LinkType, Options, Parser};
 use zscript_parser::interner::intern_name;
 
 pub enum SidebarSection {
@@ -394,7 +394,7 @@ impl SourceCodeWithLinks {
         sections: &[&SourceCodeSection],
         base: &str,
     ) -> Box<dyn FlowContent<String>> {
-        let classes: SpacedSet<typed_html::types::Class> = if indent {
+        let classes: SpacedSet<axohtml::types::Class> = if indent {
             ["source_line", "indent"].try_into().unwrap()
         } else {
             ["source_line", "no_indent"].try_into().unwrap()
