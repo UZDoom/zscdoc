@@ -39,7 +39,7 @@ pub struct Args {
 
     #[clap(
         long,
-        help = r#"A JSON array of objects like {"url_part": "v4", "nice_name": "4.0 (Latest)", latest: true}"#
+        help = r#"A JSON array of objects like {"url_part": "v4", "nice_name": "4.0 (Latest)", "title_suffix": "Latest", "latest": true, "no_index": true}"#
     )]
     pub versions: Option<String>,
 

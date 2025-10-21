@@ -1,5 +1,7 @@
 #![allow(unused_braces)]
 
+use std::ops::Deref;
+
 use crate::{structures::*, VersionInfo, VersionItem};
 
 use crate::item::ItemProvider;
@@ -38,6 +40,16 @@ struct SummaryGridRow<'a> {
     link: String,
     doc_comment: String,
     context: &'a [zscript_parser::interner::NameSymbol],
+}
+
+fn title_name(docs_name: &str, version_info: Option<&VersionInfo>) -> String {
+    format!(
+        "{}{}",
+        docs_name,
+        version_info
+            .map(|v| v.title_suffix.deref())
+            .unwrap_or_default()
+    )
 }
 
 fn render_html_boilerplate(
@@ -963,7 +975,11 @@ impl Class {
         };
         let docs_id = &format!("class.{}.docs", self.name);
         render_html_boilerplate(
-            &format!("Class {} - {}", self.name, docs_name),
+            &format!(
+                "Class {} - {}",
+                self.name,
+                title_name(docs_name, version_info)
+            ),
             html!(
                 <div>
                     <div class="doc_row">
@@ -1158,7 +1174,11 @@ impl Struct {
         };
         let docs_id = format!("struct.{}.docs", self.name);
         render_html_boilerplate(
-            &format!("Struct {} - {}", self.name, docs_name),
+            &format!(
+                "Struct {} - {}",
+                self.name,
+                title_name(docs_name, version_info)
+            ),
             html!(
                 <div>
                     <div class="doc_row">
@@ -1279,7 +1299,11 @@ impl Builtin {
         };
         let docs_id = format!("builtin.{}.docs", self.name);
         render_html_boilerplate(
-            &format!("Builtin {} - {}", self.name, docs_name),
+            &format!(
+                "Builtin {} - {}",
+                self.name,
+                title_name(docs_name, version_info)
+            ),
             html!(
                 <div>
                     <div class="doc_row">
@@ -1459,7 +1483,11 @@ impl Documentation {
         };
         let docs_id = "summary_doc";
         render_html_boilerplate(
-            &format!("{0} Documentation - {0}", self.name),
+            &format!(
+                "{} Documentation - {}",
+                self.name,
+                title_name(&self.name, version_info)
+            ),
             html!(
                 <div>
                     <div class="doc_row">

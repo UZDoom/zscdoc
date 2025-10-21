@@ -95,6 +95,7 @@ pub struct VersionItem {
     url_part: String,
     nice_name: String,
     no_index: bool,
+    title_suffix: String,
     #[expect(unused)]
     latest: bool,
 }
@@ -103,6 +104,7 @@ pub struct VersionItem {
 pub struct VersionInfo {
     current: String,
     no_index: bool,
+    title_suffix: String,
     versions: Vec<VersionItem>,
 }
 
@@ -563,6 +565,11 @@ fn main() -> anyhow::Result<()> {
             anyhow::bail!("`--target-version` not found in `--version")
         };
         let no_index = current_version_item.no_index;
+        let title_suffix = if current_version_item.title_suffix.is_empty() {
+            "".to_string()
+        } else {
+            format!(" {}", current_version_item.title_suffix)
+        };
         if !base_url.contains("<version>") {
             anyhow::bail!(
                 "`--base-url` must contain the string <version> when version support is active"
@@ -572,6 +579,7 @@ fn main() -> anyhow::Result<()> {
             current: version,
             versions,
             no_index,
+            title_suffix,
         })
     } else {
         None
