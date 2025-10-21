@@ -47,5 +47,5 @@ pub struct Args {
         long,
         help = "The version currently being documented - this should match the `url_part` for one item in `--versions`"
     )]
-    pub version: Option<String>,
+    pub target_version: Option<String>,
 }

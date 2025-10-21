@@ -544,12 +544,12 @@ fn main() -> anyhow::Result<()> {
         .map(|v| serde_json::from_str(v))
         .transpose()?;
 
-    let version_info = if versions.is_some() || args.version.is_some() {
+    let version_info = if versions.is_some() || args.target_version.is_some() {
         let Some(versions) = versions else {
-            anyhow::bail!("`--version-map` must be present if `--version` is")
+            anyhow::bail!("`--version-map` must be present if `--target-version` is")
         };
-        let Some(version) = args.version else {
-            anyhow::bail!("`--version` must be present if `--version-map` is")
+        let Some(version) = args.target_version else {
+            anyhow::bail!("`--target-version` must be present if `--version-map` is")
         };
         if !base_url.contains("<version>") {
             anyhow::bail!(
