@@ -219,17 +219,17 @@ impl BuiltinTypeHir {
             variables: self
                 .members
                 .iter()
-                .map(|m| m.produce(files, item_provider, context.clone()))
+                .map(|m| m.produce(self.name.clone(), files, item_provider, context.clone()))
                 .collect_vec(),
             functions: self
                 .functions
                 .iter()
-                .map(|m| m.produce(files, item_provider, context.clone()))
+                .map(|m| m.produce(self.name.clone(), files, item_provider, context.clone()))
                 .collect_vec(),
             constants: self
                 .constants
                 .iter()
-                .map(|m| m.produce(files, item_provider, context.clone()))
+                .map(|m| m.produce(self.name.clone(), files, item_provider, context.clone()))
                 .collect_vec(),
         }
     }
@@ -281,10 +281,12 @@ impl BuiltinTypeHir {
 impl MemberVariableHir {
     fn produce(
         &self,
+        owner_name: String,
         files: &mut Files,
         item_provider: &ItemProvider,
         context: Vec<NameSymbol>,
     ) -> crate::structures::MemberVariable {
+        let owner = Owner::Builtin(owner_name);
         let var_to_add = crate::structures::MemberVariable {
             context,
             name: files.text_from_span(self.def.name.span).to_string(),
@@ -295,7 +297,7 @@ impl MemberVariableHir {
                 .map(|s| s.string().to_string())
                 .unwrap_or_default(),
             def: crate::document::reconstruct_member_declaration(
-                Owner::Global,
+                owner,
                 &self.def,
                 item_provider,
                 &[],
@@ -314,12 +316,14 @@ impl MemberVariableHir {
 impl FunctionHir {
     fn produce(
         &self,
+        owner_name: String,
         files: &mut Files,
         item_provider: &ItemProvider,
         context: Vec<NameSymbol>,
     ) -> crate::structures::Function {
+        let owner = Owner::Builtin(owner_name);
         let func_to_add = crate::structures::Function {
-            context,
+            context: context.clone(),
             name: files.text_from_span(self.def.name.span).to_string(),
             span: self.def.span,
             doc_comment: self
@@ -328,7 +332,7 @@ impl FunctionHir {
                 .map(|s| s.string().to_string())
                 .unwrap_or_default(),
             signature: crate::document::reconstruct_function_signature(
-                Owner::Global,
+                owner,
                 &self.def,
                 item_provider,
                 &[],
@@ -348,10 +352,12 @@ impl FunctionHir {
 impl ConstantHir {
     fn produce(
         &self,
+        owner_name: String,
         files: &mut Files,
         item_provider: &ItemProvider,
         context: Vec<NameSymbol>,
     ) -> crate::structures::Constant {
+        let owner = Owner::Builtin(owner_name);
         let const_to_add = crate::structures::Constant {
             context,
             name: files.text_from_span(self.def.name.span).to_string(),
@@ -362,7 +368,7 @@ impl ConstantHir {
                 .map(|s| s.string().to_string())
                 .unwrap_or_default(),
             def: crate::document::reconstruct_constant_declaration(
-                Owner::Global,
+                owner,
                 &self.def,
                 item_provider,
                 files,
