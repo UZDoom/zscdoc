@@ -13,7 +13,7 @@ anyhow = "1.0.55"
 clap = { version = "3.1.1", features = ["derive"] }
 itertools = "0.10.3"
 rust-embed = { version = "6.8.1", features = ["interpolate-folder-path"] }
-zscript_parser = { git = "https://gitlab.com/Gutawer/zscript_parser", features = ["multithreaded", "gzd_folder_filesystem"] }
+zscript_parser = { git = "https://github.com/UZDoom/zscript_parser", features = ["multithreaded", "gzd_folder_filesystem"] }
 serde = { version = "1.0.136", features = ["derive"] }
 serde_json = "1.0.79"
 pulldown-cmark = "0.9.1"
