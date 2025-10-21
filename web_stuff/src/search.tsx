@@ -10,7 +10,8 @@ type SearchResultKind =
     | "Function"
     | "Member"
     | "Constant"
-    | "Enumerator";
+    | "Enumerator"
+    | "Global";
 
 type SearchResult = {
     name_prelude: string;
@@ -53,6 +54,7 @@ function search(
                     Member: 0,
                     Constant: 0,
                     Enumerator: 0,
+                    Global: 0,
                 }[a.obj.kind]
             );
         },
@@ -110,6 +112,7 @@ function render_search_results(results: Fuzzysort.KeysResults<SearchResult>) {
                                                 Member: "member",
                                                 Constant: "constant",
                                                 Enumerator: "constant",
+                                                Global: "member",
                                             }[r.obj.kind]
                                         }
                                     `}

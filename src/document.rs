@@ -955,6 +955,37 @@ fn struct_flag_to_string(flag: hir::StructDefinitionFlags) -> &'static str {
     }
 }
 
+fn globals_doc(s: &hir::StructDefinition, files: &Files, item_provider: &ItemProvider) -> Globals {
+    let mut globals_to_add = Globals { variables: vec![] };
+    for (_, node) in s.inners.iter() {
+        let inner_name = files.text_from_span(node[0].name().span);
+        match &node[0].kind {
+            hir::StructInnerKind::MemberDeclaration(m) => {
+                if should_skip(m.doc_comment.as_ref()) {
+                    continue;
+                }
+                let owner = Owner::Global;
+                let var_to_add = MemberVariable {
+                    context: vec![],
+                    name: inner_name.to_string(),
+                    span: m.span,
+                    doc_comment: m
+                        .doc_comment
+                        .map(|s| s.string().to_string())
+                        .unwrap_or_else(|| "".to_string()),
+                    def: reconstruct_member_declaration(owner, m, item_provider, &[], files),
+                    deprecated: m.deprecated.as_ref().map(transform_deprecated),
+                };
+                globals_to_add.variables.push(var_to_add);
+            }
+            _ => unimplemented!(),
+        }
+    }
+    globals_to_add.variables.sort_unstable_by_key(|x| x.span);
+
+    globals_to_add
+}
+
 fn struct_doc(
     name: &str,
     no_context_name: &str,
@@ -1166,6 +1197,7 @@ pub fn hir_to_doc_structures(
     item_provider: &ItemProvider,
     dependencies: &Dependencies,
     builtins: Vec<Builtin>,
+    document_globals: bool,
 ) -> Documentation {
     let mut docs = Documentation {
         name: nice_name.to_string(),
@@ -1174,6 +1206,7 @@ pub fn hir_to_doc_structures(
         enums: vec![],
         constants: vec![],
         builtins,
+        globals: None,
         summary_doc,
     };
     for (_, node) in hir.definitions.iter() {
@@ -1190,6 +1223,9 @@ pub fn hir_to_doc_structures(
                 docs.classes.push(class_to_add);
             }
             hir::TopLevelDefinitionKind::Struct(s) => {
+                if name == "_" && document_globals {
+                    docs.globals = Some(globals_doc(s, files, item_provider));
+                }
                 if should_skip(s.doc_comment.as_ref())
                     || s.flags
                         .contains(hir::StructDefinitionFlags::UNSAFE_INTERNAL)

@@ -80,6 +80,8 @@ struct Archive {
     builtins: Option<Vec<String>>,
     #[serde(default = "String::new")]
     base_url: String,
+    #[serde(default)]
+    document_globals: bool,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -515,6 +517,7 @@ fn main() -> anyhow::Result<()> {
         &item_provider,
         &dependencies,
         builtins,
+        config.archive.document_globals,
     );
 
     let base_url = args.base_url.unwrap_or(config.archive.base_url);

@@ -175,6 +175,11 @@ pub struct Builtin {
     pub constants: Vec<Constant>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Globals {
+    pub variables: Vec<MemberVariable>,
+}
+
 pub struct Documentation {
     pub name: String,
     pub classes: Vec<Class>,
@@ -182,6 +187,7 @@ pub struct Documentation {
     pub enums: Vec<Enum>,
     pub builtins: Vec<Builtin>,
     pub constants: Vec<Constant>,
+    pub globals: Option<Globals>,
     pub summary_doc: String,
 }
 

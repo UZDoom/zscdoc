@@ -325,7 +325,11 @@ impl LinkedSectionKind {
                 format!("/{}#function.{}", owner.get_href_prelude(), link)
             }
             LinkedSectionKind::Member { owner, link } => {
-                format!("/{}#member.{}", owner.get_href_prelude(), link)
+                let kind = match owner {
+                    Owner::Global => "global",
+                    _ => "member",
+                };
+                format!("/{}#{}.{}", owner.get_href_prelude(), kind, link)
             }
             LinkedSectionKind::Enumerator { owner, link } => {
                 format!("/{}#enumerator.{}", owner.get_href_prelude(), link)
@@ -521,9 +525,16 @@ impl SourceCodeWithLinks {
 impl MemberVariable {
     fn render(&self, item_provider: &ItemProvider, base: &str) -> Box<dyn FlowContent<String>> {
         let docs_id = format!("member.{}.docs", self.name);
+        let kind = if self.context.is_empty() {
+            "global"
+        } else {
+            "member"
+        };
+        let docs_id = format!("{}.{}.docs", kind, self.name);
         html!(
             <div>
                 <div class="doc_row" id={ Id::new(format!("member.{}", self.name)) }>
+                <div class="doc_row" id={ Id::new(format!("{}.{}", kind, self.name)) }>
                     <div class="doc_main">
                         { self.def.render(base) }
                     </div>
@@ -1344,6 +1355,12 @@ impl Documentation {
             text: "Contents".to_string(),
             link: None,
         }];
+        if self.globals.is_some() {
+            sections.push(SidebarSection::Text {
+                text: "Global Variables".to_string(),
+                link: "#globals".to_string(),
+            });
+        }
         if !self.constants.is_empty() {
             sections.push(SidebarSection::Text {
                 text: "Constants".to_string(),
@@ -1395,6 +1412,16 @@ impl Documentation {
                     </div>
                     <hr/>
                     { render_doc_comment(&self.summary_doc, true, docs_id, item_provider, &[], base) }
+                    {
+                        render_section_from_slice(
+                            "Global Variables",
+                            "globals",
+                            "",
+                            &self.globals.clone().map(|g| g.variables).unwrap_or_default(),
+                            false,
+                            |v| v.render(item_provider, base),
+                        )
+                    }
                     {
                         render_section_from_slice(
                             "Constants", "constants", "", &self.constants, false,

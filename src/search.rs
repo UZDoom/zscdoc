@@ -13,6 +13,7 @@ pub enum SearchResultKind {
     Member,
     Constant,
     Enumerator,
+    Global,
 }
 
 #[derive(Serialize)]
@@ -233,6 +234,17 @@ pub fn collect_search_results(
     }
     for b in docs.builtins.iter() {
         collect_builtin(b, &mut res, item_provider, base);
+    }
+    if let Some(g) = &docs.globals {
+        for m in &g.variables {
+            res.results.push(SearchResult {
+                name_prelude: "".to_string(),
+                name: m.name.to_string(),
+                link: format!("index.html#global.{}", m.name),
+                desc: summarize(&m.doc_comment, item_provider, &m.context, base),
+                kind: SearchResultKind::Global,
+            });
+        }
     }
     res
 }
