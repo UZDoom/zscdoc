@@ -1,6 +1,6 @@
 # zscdoc
 
-### A GZDoom ZScript documentation generation tool
+### A UZDoom ZScript documentation generation tool
 
 `zscdoc` is a tool for generating documentation of ZScript code, similar to
 tools for other languages such as `rustdoc` or `doxygen`.
@@ -31,7 +31,7 @@ title = "Test"
 filename = "test.png"
 
 [[dependency]]
-path = "../gzdoom_pk3"
+path = "../uzdoom_pk3"
 url = "http://localhost:8081"
 ```
 

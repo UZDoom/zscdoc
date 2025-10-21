@@ -4,7 +4,7 @@ edition = "2021"
 name = "zscdoc"
 version = "0.1.0"
 license = "MIT"
-description = "A documentation generator for GZDoom ZScript"
+description = "A documentation generator for UZDoom ZScript"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
