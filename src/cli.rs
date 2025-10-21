@@ -48,4 +48,7 @@ pub struct Args {
         help = "The version currently being documented - this should match the `url_part` for one item in `--versions`"
     )]
     pub target_version: Option<String>,
+
+    #[clap(long, help = "The canonical domain you're hosting the docs on")]
+    pub canonical_domain: Option<String>,
 }

@@ -44,6 +44,7 @@ fn render_html_boilerplate(
     title: &str,
     body: Box<dyn FlowContent<String>>,
     sidebar_data: SidebarData,
+    canonical_url: Option<&str>,
     base: &BaseUrl,
     version_info: Option<&VersionInfo>,
 ) -> DOMTree<String> {
@@ -53,6 +54,7 @@ fn render_html_boilerplate(
                 <title> { text!(title) } </title>
                 <link rel="icon" type="image/x-icon" href={ prefix_href(&base.filled, "/favicon.png") }/>
                 <link rel="stylesheet" href={ prefix_href(&base.filled, "/main.css") }/>
+                { canonical_url.map(|c| html!(<link rel="canonical" href={ c }/>)) }
                 <script src="main.bundle.js"></script>
                 <meta charset="UTF-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -1105,6 +1107,7 @@ impl Class {
                 </div>
             ),
             sidebar_data,
+            None,
             base,
             version_info,
         )
@@ -1225,6 +1228,7 @@ impl Struct {
                 </div>
             ),
             sidebar_data,
+            None,
             base,
             version_info,
         )
@@ -1316,6 +1320,7 @@ impl Builtin {
                 </div>
             ),
             sidebar_data,
+            None,
             base,
             version_info,
         )
@@ -1389,6 +1394,7 @@ impl Enum {
                 </div>
             ),
             sidebar_data,
+            None,
             base,
             version_info,
         )
@@ -1401,6 +1407,7 @@ impl Documentation {
         item_provider: &ItemProvider,
         base: &BaseUrl,
         version_info: Option<&VersionInfo>,
+        canonical_domain: Option<&str>,
     ) -> DOMTree<String> {
         let mut sections = vec![SidebarSection::Header {
             text: "Contents".to_string(),
@@ -1544,6 +1551,9 @@ impl Documentation {
                 </div>
             ),
             sidebar_data,
+            canonical_domain
+                .map(|d| d.to_string() + &base.filled + "/index.html")
+                .as_deref(),
             base,
             version_info,
         )
@@ -1581,6 +1591,7 @@ pub fn render_from_markdown(
             </div>
         ),
         sidebar_data,
+        None,
         base,
         version_info,
     )

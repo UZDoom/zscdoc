@@ -130,6 +130,7 @@ fn save_docs_to_folder(
     copy_files: &[CopyFileToRender],
     base: &BaseUrl,
     version_info: Option<VersionInfo>,
+    canonical_domain: Option<String>,
 ) -> anyhow::Result<()> {
     use std::fs::*;
     use std::io::*;
@@ -181,7 +182,12 @@ fn save_docs_to_folder(
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
-                docs.render_summary_page(item_provider, base, version_info.as_ref())
+                docs.render_summary_page(
+                    item_provider,
+                    base,
+                    version_info.as_ref(),
+                    canonical_domain.as_deref()
+                )
             )
             .as_bytes(),
         )?;
@@ -593,6 +599,7 @@ fn main() -> anyhow::Result<()> {
             &copy_files,
             &base_url,
             version_info,
+            args.canonical_domain,
         )?;
         eprintln!("Documentation written to {}!", out);
     }
