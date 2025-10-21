@@ -58,6 +58,9 @@ fn render_html_boilerplate(
                 <script src="main.bundle.js"></script>
                 <meta charset="UTF-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+                { if version_info.map(|v| v.no_index).unwrap_or_default() {
+                    Some(html!(<meta name="robots" content="noindex"/>))
+                } else { None } }
             </head>
             <body>
                 <div id="header">
@@ -807,7 +810,7 @@ fn version_selector(v: &VersionInfo, base: &BaseUrl) -> Box<dyn FlowContent<Stri
     html!(
         <div class="version_static_or_selector">
             <select name="version" class="version_selector hide" autocomplete="off">
-                { v.versions.iter().map(|VersionItem { url_part, nice_name, latest: _ }| html!(
+                { v.versions.iter().map(|VersionItem { url_part, nice_name, .. }| html!(
                     <option
                         value={base.template.replace("<version>", url_part) + "/index.html"}
                         selected={url_part == &v.current}
@@ -817,7 +820,7 @@ fn version_selector(v: &VersionInfo, base: &BaseUrl) -> Box<dyn FlowContent<Stri
                 )) }
             </select>
             <div class="version_static">
-                { v.versions.iter().map(|VersionItem { url_part, nice_name, latest: _ }| {
+                { v.versions.iter().map(|VersionItem { url_part, nice_name, .. }| {
                     if url_part == &v.current {
                         text!(nice_name)
                     } else {

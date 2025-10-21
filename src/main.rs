@@ -94,6 +94,7 @@ struct MarkdownFile {
 pub struct VersionItem {
     url_part: String,
     nice_name: String,
+    no_index: bool,
     #[expect(unused)]
     latest: bool,
 }
@@ -101,6 +102,7 @@ pub struct VersionItem {
 #[derive(serde::Deserialize)]
 pub struct VersionInfo {
     current: String,
+    no_index: bool,
     versions: Vec<VersionItem>,
 }
 
@@ -186,7 +188,7 @@ fn save_docs_to_folder(
                     item_provider,
                     base,
                     version_info.as_ref(),
-                    canonical_domain.as_deref()
+                    canonical_domain.as_deref(),
                 )
             )
             .as_bytes(),
@@ -552,11 +554,15 @@ fn main() -> anyhow::Result<()> {
 
     let version_info = if versions.is_some() || args.target_version.is_some() {
         let Some(versions) = versions else {
-            anyhow::bail!("`--version-map` must be present if `--target-version` is")
+            anyhow::bail!("`--versions` must be present if `--target-version` is")
         };
         let Some(version) = args.target_version else {
             anyhow::bail!("`--target-version` must be present if `--version-map` is")
         };
+        let Some(current_version_item) = versions.iter().find(|v| v.url_part == version) else {
+            anyhow::bail!("`--target-version` not found in `--version")
+        };
+        let no_index = current_version_item.no_index;
         if !base_url.contains("<version>") {
             anyhow::bail!(
                 "`--base-url` must contain the string <version> when version support is active"
@@ -565,6 +571,7 @@ fn main() -> anyhow::Result<()> {
         Some(VersionInfo {
             current: version,
             versions,
+            no_index,
         })
     } else {
         None
