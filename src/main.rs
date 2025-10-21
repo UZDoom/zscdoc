@@ -94,6 +94,7 @@ struct MarkdownFile {
 pub struct VersionItem {
     url_part: String,
     nice_name: String,
+    #[expect(unused)]
     latest: bool,
 }
 
