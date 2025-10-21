@@ -634,10 +634,10 @@ fn class_doc(
 ) -> Class {
     let mut def_flags = SourceCodeWithLinks { sections: vec![] };
     for f in CLASS_FLAG_ORDER {
-        if !def_flags.sections.is_empty() {
-            def_flags.add_no_link(" ");
-        }
         if c.flags.contains(f) {
+            if !def_flags.sections.is_empty() {
+                def_flags.add_no_link(" ");
+            }
             def_flags.add_no_link(class_flag_to_string(f));
         }
     }
@@ -965,10 +965,10 @@ fn struct_doc(
 ) -> Struct {
     let mut def_flags = SourceCodeWithLinks { sections: vec![] };
     for f in STRUCT_FLAG_ORDER {
-        if !def_flags.sections.is_empty() {
-            def_flags.add_no_link(" ");
-        }
         if s.flags.contains(f) {
+            if !def_flags.sections.is_empty() {
+                def_flags.add_no_link(" ");
+            }
             def_flags.add_no_link(struct_flag_to_string(f));
         }
     }
