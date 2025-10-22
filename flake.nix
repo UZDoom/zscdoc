@@ -1,7 +1,7 @@
 {
   description = "zscdoc Flake";
   inputs = {
-    nixpkgs.url = "flake:nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs?ref=nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
@@ -49,8 +49,7 @@
             openssl
           ];
           src = ./.;
-          useFetchCargoVendor = true;
-          cargoHash = "sha256-5hYRs8xWQRK0TNmVGsH2i/wjhTtW1hUCpwmq1+PO7SQ=";
+          cargoHash = "sha256-UceVa0hUZLZgC28xF0gKsgsBLuxvpFvG4YYxAKKJdvY=";
         };
       in
       {
