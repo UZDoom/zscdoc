@@ -16,6 +16,7 @@ use crate::{
     builtin::BuiltinTypeFromFile, cli::*, coverage::coverage_breakdown, item::ItemProvider,
     render::render_from_markdown, structures::BaseUrl,
 };
+use anyhow::Context as _;
 use clap::Parser;
 use itertools::Itertools;
 use zscript_parser::{
@@ -141,26 +142,29 @@ fn save_docs_to_folder(
     let path = std::path::PathBuf::from(output);
     if path.exists() {
         if delete_without_confirm {
-            remove_dir_all(&path)?;
+            remove_dir_all(&path).context("Failed to remove dir")?;
         } else {
             print!("Path {:?} exists. Delete (yN)? ", path);
             stdout().flush().unwrap();
             let mut buffer = String::new();
             stdin().read_line(&mut buffer)?;
             if buffer == "y\n" || buffer == "Y\n" {
-                remove_dir_all(&path)?;
+                remove_dir_all(&path).context("Failed to remove dir")?;
             } else {
                 anyhow::bail!("Path not deleted.");
             }
         }
     }
-    create_dir(&path)?;
+    create_dir(&path).context("Failed to create dir")?;
     for m in copy_files {
-        let mut file = File::create(path.join(&*m.output_filename))?;
-        file.write_all(&m.bytes)?;
+        let mut file =
+            File::create(path.join(&*m.output_filename)).context("Failed to create copy file")?;
+        file.write_all(&m.bytes)
+            .context("Failed to write copy file")?;
     }
     for m in markdown_files {
-        let mut file = File::create(path.join(&*m.output_filename))?;
+        let mut file = File::create(path.join(&*m.output_filename))
+            .context("Failed to create markdown file")?;
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
@@ -175,14 +179,18 @@ fn save_docs_to_folder(
                 )
             )
             .as_bytes(),
-        )?;
+        )
+        .context("Failed to write markdown file")?;
     }
     for asset_path in Assets::iter() {
-        let mut file = File::create(path.join(&*asset_path))?;
-        file.write_all(&Assets::get(&asset_path).unwrap().data)?;
+        let mut file =
+            File::create(dbg!(path.join(&*asset_path))).context("Failed to create asset file")?;
+        file.write_all(&Assets::get(&asset_path).unwrap().data)
+            .context("Failed to write asset file")?;
     }
     {
-        let mut file = File::create(path.join("index.html"))?;
+        let mut file =
+            File::create(path.join("index.html")).context("Failed to create index file")?;
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
@@ -194,99 +202,119 @@ fn save_docs_to_folder(
                 )
             )
             .as_bytes(),
-        )?;
+        )
+        .context("Failed to write index file")?;
     }
     for class in docs.classes.iter() {
-        let mut file = File::create(path.join(format!("class.{}.html", class.name)))?;
+        let mut file = File::create(path.join(format!("class.{}.html", class.name)))
+            .context("Failed to create class file")?;
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
                 class.render(&docs.name, item_provider, base, version_info.as_ref())
             )
             .as_bytes(),
-        )?;
+        )
+        .context("Failed to write class file")?;
         for strukt in class.inner_structs.iter() {
-            let mut file = File::create(path.join(format!("struct.{}.html", strukt.name)))?;
+            let mut file = File::create(path.join(format!("struct.{}.html", strukt.name)))
+                .context("Failed to create class inner struct file")?;
             file.write_all(
                 format!(
                     "<!DOCTYPE html>{}",
                     strukt.render(&docs.name, item_provider, base, version_info.as_ref())
                 )
                 .as_bytes(),
-            )?;
+            )
+            .context("Failed to write class inner struct file")?;
             for enm in strukt.inner_enums.iter() {
-                let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))?;
+                let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))
+                    .context("Failed to create class inner struct inner enum file")?;
                 file.write_all(
                     format!(
                         "<!DOCTYPE html>{}",
                         enm.render(&docs.name, item_provider, base, version_info.as_ref())
                     )
                     .as_bytes(),
-                )?;
+                )
+                .context("Failed to write class inner struct inner enum file")?;
             }
         }
         for enm in class.inner_enums.iter() {
-            let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))?;
+            let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))
+                .context("Failed to create class inner enum file")?;
             file.write_all(
                 format!(
                     "<!DOCTYPE html>{}",
                     enm.render(&docs.name, item_provider, base, version_info.as_ref())
                 )
                 .as_bytes(),
-            )?;
+            )
+            .context("Failed to write class inner enum file")?;
         }
     }
     for strukt in docs.structs.iter() {
-        let mut file = File::create(path.join(format!("struct.{}.html", strukt.name)))?;
+        let mut file = File::create(path.join(format!("struct.{}.html", strukt.name)))
+            .context("Failed to create struct file")?;
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
                 strukt.render(&docs.name, item_provider, base, version_info.as_ref())
             )
             .as_bytes(),
-        )?;
+        )
+        .context("Failed to write struct file")?;
         for enm in strukt.inner_enums.iter() {
-            let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))?;
+            let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))
+                .context("Failed to create struct inner enum file")?;
             file.write_all(
                 format!(
                     "<!DOCTYPE html>{}",
                     enm.render(&docs.name, item_provider, base, version_info.as_ref())
                 )
                 .as_bytes(),
-            )?;
+            )
+            .context("Failed to write struct inner enum file")?;
         }
     }
     for enm in docs.enums.iter() {
-        let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))?;
+        let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))
+            .context("Failed to create enum file")?;
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
                 enm.render(&docs.name, item_provider, base, version_info.as_ref())
             )
             .as_bytes(),
-        )?;
+        )
+        .context("Failed to write enum file")?;
     }
     for builtin in docs.builtins.iter() {
-        let mut file = File::create(path.join(format!("builtin.{}.html", builtin.name)))?;
+        let mut file = File::create(path.join(format!("builtin.{}.html", builtin.name)))
+            .context("Failed to create builtin file")?;
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
                 builtin.render(&docs.name, item_provider, base, version_info.as_ref())
             )
             .as_bytes(),
-        )?;
+        )
+        .context("Failed to write builtin file")?;
     }
     {
-        let mut file = File::create(path.join("search.json"))?;
+        let mut file =
+            File::create(path.join("search.json")).context("Failed to create search json file")?;
         file.write_all(
             serde_json::to_string(&search::collect_search_results(docs, item_provider, base))
                 .unwrap()
                 .as_bytes(),
-        )?;
+        )
+        .context("Failed to write search json file")?;
     }
     if let Some(f) = favicon {
-        let mut file = File::create(path.join("favicon.png"))?;
-        file.write_all(f)?;
+        let mut file =
+            File::create(path.join("favicon.png")).context("Failed to create favicon file")?;
+        file.write_all(f).context("Failed to write favicon file")?;
     }
     Ok(())
 }
@@ -615,7 +643,8 @@ fn main() -> anyhow::Result<()> {
             &base_url,
             version_info,
             args.canonical_domain,
-        )?;
+        )
+        .context("Failed to write docs to folder")?;
         eprintln!("Documentation written to {}!", out);
     }
 
