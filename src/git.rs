@@ -55,6 +55,7 @@ fn change_head_in<P: AsRef<Path>>(url: &str, path: P, refname: &str) -> anyhow::
     });
 
     let mut fo = FetchOptions::new();
+    fo.depth(1);
     fo.remote_callbacks(cb);
     remote.fetch(&[] as &[&str], Some(&mut fo), None)?;
     std::io::stderr()
