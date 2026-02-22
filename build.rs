@@ -58,6 +58,7 @@ pub fn main() {
         let dist_out = dest.join("dist");
         eprintln!("Copying `{web_stuff:?}` to `{dist_out:?}`");
         fs_extra::dir::create_all(&dist_out, true).expect("expected to create dir");
+        let dir_options = fs_extra::dir::CopyOptions::new().content_only(true);
         fs_extra::dir::copy(web_stuff, dist_out, &dir_options)
             .expect("expected to copy web_stuff dist dir");
         return;
