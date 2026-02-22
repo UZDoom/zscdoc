@@ -17,13 +17,15 @@ fn change_head_in<P: AsRef<Path>>(url: &str, path: P, refname: &str) -> anyhow::
 
     let repo = Repository::open(path)?;
 
-    repo.remote_set_url("origin", url)?;
+    repo.remote_set_url("origin", url)
+        .context("while setting url")?;
     repo.remote_add_fetch(
         "origin",
         &format!("+refs/heads/{refname}:refs/remotes/origin/{refname}"),
-    )?;
+    )
+    .context("while adding remote")?;
 
-    let mut remote = repo.find_remote("origin")?;
+    let mut remote = repo.find_remote("origin").context("while finding remote")?;
     let mut cb = RemoteCallbacks::new();
 
     let mut cleared = false;
@@ -60,20 +62,27 @@ fn change_head_in<P: AsRef<Path>>(url: &str, path: P, refname: &str) -> anyhow::
     let mut fo = FetchOptions::new();
     fo.depth(1);
     fo.remote_callbacks(cb);
-    remote.fetch(&[refname] as &[&str], Some(&mut fo), None)?;
+    remote
+        .fetch(&[refname] as &[&str], Some(&mut fo), None)
+        .context("while fetching")?;
     std::io::stderr()
         .execute(Clear(ClearType::CurrentLine))
         .unwrap();
 
-    let (object, reference) = repo.revparse_ext(&format!("origin/{refname}"))?;
+    let (object, reference) = repo
+        .revparse_ext(&format!("origin/{refname}"))
+        .context("while parsing refname")?;
 
-    repo.checkout_tree(&object, None)?;
-    repo.reset(&object, git2::ResetType::Hard, None)?;
+    repo.checkout_tree(&object, None)
+        .context("while checking out")?;
+    repo.reset(&object, git2::ResetType::Hard, None)
+        .context("while resetting")?;
 
     match reference {
         Some(gref) => repo.set_head(gref.name().unwrap()),
         None => repo.set_head_detached(object.id()),
-    }?;
+    }
+    .context("while setting head")?;
 
     Ok(())
 }
