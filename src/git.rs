@@ -18,7 +18,10 @@ fn change_head_in<P: AsRef<Path>>(url: &str, path: P, refname: &str) -> anyhow::
     let repo = Repository::open(path)?;
 
     repo.remote_set_url("origin", url)?;
-    repo.remote_add_fetch("origin", "+refs/heads/*:refs/remotes/origin/*")?;
+    repo.remote_add_fetch(
+        "origin",
+        &format!("+refs/heads/{refname}:refs/remotes/origin/{refname}"),
+    )?;
 
     let mut remote = repo.find_remote("origin")?;
     let mut cb = RemoteCallbacks::new();
@@ -57,12 +60,12 @@ fn change_head_in<P: AsRef<Path>>(url: &str, path: P, refname: &str) -> anyhow::
     let mut fo = FetchOptions::new();
     fo.depth(1);
     fo.remote_callbacks(cb);
-    remote.fetch(&[] as &[&str], Some(&mut fo), None)?;
+    remote.fetch(&[refname] as &[&str], Some(&mut fo), None)?;
     std::io::stderr()
         .execute(Clear(ClearType::CurrentLine))
         .unwrap();
 
-    let (object, reference) = repo.revparse_ext(refname)?;
+    let (object, reference) = repo.revparse_ext(&format!("origin/{refname}"))?;
 
     repo.checkout_tree(&object, None)?;
     repo.reset(&object, git2::ResetType::Hard, None)?;
