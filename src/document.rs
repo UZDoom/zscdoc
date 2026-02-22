@@ -437,6 +437,7 @@ fn member_flag_to_string(flag: hir::MemberFlags) -> &'static str {
         hir::MemberFlags::PLAY => "play",
         hir::MemberFlags::CLEAR_SCOPE => "clearscope",
         hir::MemberFlags::META => "meta",
+        hir::MemberFlags::NO_ROLLBACK => "norollback",
         _ => panic!(),
     }
 }

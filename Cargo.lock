@@ -13,9 +13,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.56"
+version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4361135be9122e0870de935d7c439aef945b9f9ddd4199a553b5270b49c82a27"
+checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "ascii-canvas"
@@ -1873,7 +1873,7 @@ dependencies = [
 [[package]]
 name = "zscript_parser"
 version = "0.2.0"
-source = "git+https://github.com/UZDoom/zscript_parser#f540221d0d7fc364bb4620fb93efa7c15749b371"
+source = "git+https://github.com/UZDoom/zscript_parser#c65045063fff136f0708f319ced1cfbb705bb83f"
 dependencies = [
  "bitflags 1.3.2",
  "once_cell",
