@@ -49,7 +49,7 @@
             openssl
           ];
           src = ./.;
-          cargoHash = "sha256-c9tGHhJljYFUDxKT3YXwNnvree2CuKMSUgHzKDi838o=";
+          cargoHash = "sha256-q58NehiQ68vAj/1MDlnaKp0JJgTZX8Kuhb7elNsaypc=";
         };
       in
       {
