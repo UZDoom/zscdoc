@@ -146,7 +146,7 @@ impl Documentation {
                         .unwrap_or(false)
                 }
             };
-        };
+        }
         Some(CoverageItem {
             covered: !self.summary_doc.is_empty(),
             kind: CoverageKind::Summary,
