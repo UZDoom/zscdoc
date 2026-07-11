@@ -184,7 +184,7 @@ fn save_docs_to_folder(
     }
     for asset_path in Assets::iter() {
         let mut file =
-            File::create(dbg!(path.join(&*asset_path))).context("Failed to create asset file")?;
+            File::create(path.join(&*asset_path)).context("Failed to create asset file")?;
         file.write_all(&Assets::get(&asset_path).unwrap().data)
             .context("Failed to write asset file")?;
     }
