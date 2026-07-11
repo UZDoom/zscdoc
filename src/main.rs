@@ -83,6 +83,8 @@ struct Archive {
     base_url: String,
     #[serde(default)]
     document_globals: bool,
+
+    summary_exclude_pattern: Option<String>,
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -136,6 +138,7 @@ fn save_docs_to_folder(
     base: &BaseUrl,
     version_info: Option<VersionInfo>,
     canonical_domain: Option<String>,
+    summary_exclude_regex: Option<&regex::Regex>,
 ) -> anyhow::Result<()> {
     use std::fs::*;
     use std::io::*;
@@ -191,6 +194,7 @@ fn save_docs_to_folder(
     {
         let mut file =
             File::create(path.join("index.html")).context("Failed to create index file")?;
+
         file.write_all(
             format!(
                 "<!DOCTYPE html>{}",
@@ -199,6 +203,7 @@ fn save_docs_to_folder(
                     base,
                     version_info.as_ref(),
                     canonical_domain.as_deref(),
+                    summary_exclude_regex,
                 )
             )
             .as_bytes(),
@@ -305,9 +310,14 @@ fn save_docs_to_folder(
         let mut file =
             File::create(path.join("search.json")).context("Failed to create search json file")?;
         file.write_all(
-            serde_json::to_string(&search::collect_search_results(docs, item_provider, base))
-                .unwrap()
-                .as_bytes(),
+            serde_json::to_string(&search::collect_search_results(
+                docs,
+                item_provider,
+                base,
+                summary_exclude_regex,
+            ))
+            .unwrap()
+            .as_bytes(),
         )
         .context("Failed to write search json file")?;
     }
@@ -624,10 +634,22 @@ fn main() -> anyhow::Result<()> {
         ),
     };
 
+    let summary_exclude_regex = config
+        .archive
+        .summary_exclude_pattern
+        .map(|s| format!("^{s}$"))
+        .as_deref()
+        .map(regex::Regex::new)
+        .transpose()?;
+
     if let Some(c) = args.coverage {
         let breakdown = coverage_breakdown(
-            docs.coverage(&config.archive.nice_name, &files)
-                .collect_vec(),
+            docs.coverage(
+                &config.archive.nice_name,
+                &files,
+                summary_exclude_regex.as_ref(),
+            )
+            .collect_vec(),
         );
         breakdown.show(c);
     } else {
@@ -643,6 +665,7 @@ fn main() -> anyhow::Result<()> {
             &base_url,
             version_info,
             args.canonical_domain,
+            summary_exclude_regex.as_ref(),
         )
         .context("Failed to write docs to folder")?;
         eprintln!("Documentation written to {}!", out);

@@ -136,7 +136,17 @@ impl Documentation {
         &'a self,
         base: &str,
         files: &'a Files,
+        summary_exclude_regex: Option<&'a regex::Regex>,
     ) -> impl Iterator<Item = CoverageItem> + 'a {
+        macro_rules! filter {
+            () => {
+                move |i| {
+                    !summary_exclude_regex
+                        .map(|r| r.is_match(&i.name))
+                        .unwrap_or(false)
+                }
+            };
+        };
         Some(CoverageItem {
             covered: !self.summary_doc.is_empty(),
             kind: CoverageKind::Summary,
@@ -144,11 +154,36 @@ impl Documentation {
             path: vec![self.name.clone()],
         })
         .into_iter()
-        .chain(self.classes.iter().flat_map(|x| x.coverage(&[], files)))
-        .chain(self.structs.iter().flat_map(|x| x.coverage(&[], files)))
-        .chain(self.enums.iter().flat_map(|x| x.coverage(&[], files)))
-        .chain(self.builtins.iter().flat_map(|x| x.coverage(&[], files)))
-        .chain(self.constants.iter().flat_map(|x| x.coverage(&[], files)))
+        .chain(
+            self.classes
+                .iter()
+                .filter(filter!())
+                .flat_map(|x| x.coverage(&[], files)),
+        )
+        .chain(
+            self.structs
+                .iter()
+                .filter(filter!())
+                .flat_map(|x| x.coverage(&[], files)),
+        )
+        .chain(
+            self.enums
+                .iter()
+                .filter(filter!())
+                .flat_map(|x| x.coverage(&[], files)),
+        )
+        .chain(
+            self.builtins
+                .iter()
+                .filter(filter!())
+                .flat_map(|x| x.coverage(&[], files)),
+        )
+        .chain(
+            self.constants
+                .iter()
+                .filter(filter!())
+                .flat_map(|x| x.coverage(&[], files)),
+        )
     }
 }
 

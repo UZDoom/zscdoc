@@ -222,9 +222,16 @@ pub fn collect_search_results(
     docs: &Documentation,
     item_provider: &ItemProvider,
     base: &BaseUrl,
+    summary_exclude_regex: Option<&regex::Regex>,
 ) -> SearchResults {
     let mut res = SearchResults { results: vec![] };
     for c in docs.constants.iter() {
+        if summary_exclude_regex
+            .map(|r| r.is_match(&c.name))
+            .unwrap_or(false)
+        {
+            continue;
+        }
         res.results.push(SearchResult {
             name_prelude: "".to_string(),
             name: c.name.to_string(),
@@ -234,19 +241,49 @@ pub fn collect_search_results(
         });
     }
     for c in docs.classes.iter() {
+        if summary_exclude_regex
+            .map(|r| r.is_match(&c.name))
+            .unwrap_or(false)
+        {
+            continue;
+        }
         collect_class(c, &mut res, item_provider, base);
     }
     for s in docs.structs.iter() {
+        if summary_exclude_regex
+            .map(|r| r.is_match(&s.name))
+            .unwrap_or(false)
+        {
+            continue;
+        }
         collect_struct(s, &mut res, item_provider, base);
     }
     for e in docs.enums.iter() {
+        if summary_exclude_regex
+            .map(|r| r.is_match(&e.name))
+            .unwrap_or(false)
+        {
+            continue;
+        }
         collect_enum(e, &mut res, item_provider, base);
     }
     for b in docs.builtins.iter() {
+        if summary_exclude_regex
+            .map(|r| r.is_match(&b.name))
+            .unwrap_or(false)
+        {
+            continue;
+        }
         collect_builtin(b, &mut res, item_provider, base);
     }
     if let Some(g) = &docs.globals {
         for m in &g.variables {
+            if summary_exclude_regex
+                .map(|r| r.is_match(&m.name))
+                .unwrap_or(false)
+            {
+                continue;
+            }
             res.results.push(SearchResult {
                 name_prelude: "".to_string(),
                 name: m.name.to_string(),

@@ -1451,6 +1451,7 @@ impl Documentation {
         base: &BaseUrl,
         version_info: Option<&VersionInfo>,
         canonical_domain: Option<&str>,
+        summary_exclude_pattern: Option<&regex::Regex>,
     ) -> DOMTree<String> {
         let mut sections = vec![SidebarSection::Header {
             text: "Contents".to_string(),
@@ -1522,14 +1523,27 @@ impl Documentation {
                             "Global Variables",
                             "globals",
                             "",
-                            &self.globals.clone().map(|g| g.variables).unwrap_or_default(),
+                            &self.globals
+                                .clone()
+                                .map(|g| g.variables)
+                                .unwrap_or_default()
+                                .iter()
+                                .filter(|i| !summary_exclude_pattern.map(|p| p.is_match(&i.name)).unwrap_or(false))
+                                .collect_vec(),
                             false,
                             |v| v.render(item_provider, base),
                         )
                     }
                     {
                         render_section_from_slice(
-                            "Constants", "constants", "", &self.constants, false,
+                            "Constants",
+                            "constants",
+                            "",
+                            &self.constants
+                                .iter()
+                                .filter(|i| !summary_exclude_pattern.map(|p| p.is_match(&i.name)).unwrap_or(false))
+                                .collect_vec(),
+                            false,
                             |v| {
                                 v.render(item_provider, base)
                             }
@@ -1540,12 +1554,17 @@ impl Documentation {
                             "Builtin Types",
                             "builtins",
                             "builtin",
-                            &self.builtins.iter().map(|c| SummaryGridRow {
-                                name: c.name.clone(),
-                                link: format!("/builtin.{}.html", c.name),
-                                doc_comment: c.doc_comment.clone(),
-                                context: &c.context,
-                            }).collect_vec(),
+                            &self
+                                .builtins
+                                .iter()
+                                .map(|c| SummaryGridRow {
+                                    name: c.name.clone(),
+                                    link: format!("/builtin.{}.html", c.name),
+                                    doc_comment: c.doc_comment.clone(),
+                                    context: &c.context,
+                                })
+                                .filter(|i| !summary_exclude_pattern.map(|p| p.is_match(&i.name)).unwrap_or(false))
+                                .collect_vec(),
                             item_provider,
                             base,
                         )
@@ -1555,12 +1574,17 @@ impl Documentation {
                             "Classes",
                             "classes",
                             "class",
-                            &self.classes.iter().map(|c| SummaryGridRow {
-                                name: c.name.clone(),
-                                link: format!("/class.{}.html", c.name),
-                                doc_comment: c.doc_comment.clone(),
-                                context: &c.context,
-                            }).collect_vec(),
+                            &self
+                                .classes
+                                .iter()
+                                .map(|c| SummaryGridRow {
+                                    name: c.name.clone(),
+                                    link: format!("/class.{}.html", c.name),
+                                    doc_comment: c.doc_comment.clone(),
+                                    context: &c.context,
+                                })
+                                .filter(|i| !summary_exclude_pattern.map(|p| p.is_match(&i.name)).unwrap_or(false))
+                                .collect_vec(),
                             item_provider,
                             base,
                         )
@@ -1570,12 +1594,17 @@ impl Documentation {
                             "Structs",
                             "structs",
                             "struct",
-                            &self.structs.iter().map(|s| SummaryGridRow {
-                                name: s.name.clone(),
-                                link: format!("/struct.{}.html", s.name),
-                                doc_comment: s.doc_comment.clone(),
-                                context: &s.context,
-                            }).collect_vec(),
+                            &self
+                                .structs
+                                .iter()
+                                .map(|s| SummaryGridRow {
+                                    name: s.name.clone(),
+                                    link: format!("/struct.{}.html", s.name),
+                                    doc_comment: s.doc_comment.clone(),
+                                    context: &s.context,
+                                })
+                                .filter(|i| !summary_exclude_pattern.map(|p| p.is_match(&i.name)).unwrap_or(false))
+                                .collect_vec(),
                             item_provider,
                             base,
                         )
@@ -1585,12 +1614,17 @@ impl Documentation {
                             "Enums",
                             "enums",
                             "enum",
-                            &self.enums.iter().map(|e| SummaryGridRow {
-                                name: e.name.clone(),
-                                link: format!("/enum.{}.html", e.name),
-                                doc_comment: e.doc_comment.clone(),
-                                context: &e.context,
-                            }).collect_vec(),
+                            &self
+                                .enums
+                                .iter()
+                                .map(|e| SummaryGridRow {
+                                    name: e.name.clone(),
+                                    link: format!("/enum.{}.html", e.name),
+                                    doc_comment: e.doc_comment.clone(),
+                                    context: &e.context,
+                                })
+                                .filter(|i| !summary_exclude_pattern.map(|p| p.is_match(&i.name)).unwrap_or(false))
+                                .collect_vec(),
                             item_provider,
                             base,
                         )
