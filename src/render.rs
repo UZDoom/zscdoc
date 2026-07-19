@@ -162,7 +162,7 @@ fn markdown_transform<'a, 'b>(
     let mut code = String::new();
     let mut code_block = false;
 
-    let options = Options::ENABLE_TABLES;
+    let options = Options::ENABLE_TABLES.union(Options::ENABLE_GFM);
     let callback = |x| broken_link_callback(x, item_provider, context, base);
     let parser = Parser::new_with_broken_link_callback(&dedented, options, Some(callback));
 
