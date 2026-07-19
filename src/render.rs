@@ -1,6 +1,7 @@
 #![allow(unused_braces)]
 
 use std::ops::Deref;
+use std::sync::LazyLock;
 
 use crate::{structures::*, VersionInfo, VersionItem};
 
@@ -13,7 +14,12 @@ use axohtml::{
     unsafe_text,
 };
 use itertools::Itertools;
-use pulldown_cmark::{html, BrokenLink, CowStr, LinkType, Options, Parser};
+use pulldown_cmark::{
+    html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd,
+};
+use syntect::highlighting::{Theme, ThemeSet};
+use syntect::html::highlighted_html_for_string;
+use syntect::parsing::SyntaxSet;
 use zscript_parser::interner::intern_name;
 
 pub enum SidebarSection {
@@ -113,34 +119,92 @@ fn render_doc_vis_toggle_button(
     ))
 }
 
-fn md_event_map<'a>(
-    event: pulldown_cmark::Event<'a>,
-    i: Option<(&ItemProvider, &[zscript_parser::interner::NameSymbol])>,
-    base: &BaseUrl,
-) -> pulldown_cmark::Event<'a> {
-    use pulldown_cmark::{Event, Tag};
-    let link_process = |ty, link: CowStr<'a>, title| match i {
-        Some((item_provider, context)) => match ty {
-            LinkType::Inline | LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
-                let s = link.to_string();
-                let chain = s.split('.').map(|x| intern_name(x.trim()));
-                match item_provider.resolve(context, chain) {
-                    Some(v) => Tag::Link(ty, v.last().unwrap().get_href(base).into(), s.into()),
-                    None => Tag::Link(ty, link, title),
-                }
+fn markdown_transform<'a, 'b>(
+    dedented: &'a str,
+    item_provider: &'b ItemProvider,
+    context: &'b [zscript_parser::interner::NameSymbol],
+    base: &'b BaseUrl,
+) -> impl Iterator<Item = Event<'a>> + use<'a, 'b> {
+    let link_process = |ty, link: CowStr<'a>, title, id| match ty {
+        LinkType::Inline | LinkType::Reference | LinkType::Collapsed | LinkType::Shortcut => {
+            let s = link.to_string();
+            let chain = s.split('.').map(|x| intern_name(x.trim()));
+            match item_provider.resolve(context, chain) {
+                Some(v) => Tag::Link {
+                    link_type: ty,
+                    dest_url: v.last().unwrap().get_href(base).into(),
+                    title: s.into(),
+                    id,
+                },
+                None => Tag::Link {
+                    link_type: ty,
+                    dest_url: link,
+                    title,
+                    id,
+                },
             }
-            _ => Tag::Link(ty, link, title),
+        }
+        _ => Tag::Link {
+            link_type: ty,
+            dest_url: link,
+            title,
+            id,
         },
-        None => Tag::Link(ty, link, title),
     };
-    // for now i'm simply not dealing with html in markdown since it requires sanitation and i
-    // don't want to do that lol
-    match event {
-        Event::Html(s) => Event::Text(s),
-        Event::Start(Tag::Link(ty, link, title)) => Event::Start(link_process(ty, link, title)),
-        Event::End(Tag::Link(ty, link, title)) => Event::End(link_process(ty, link, title)),
-        e => e,
-    }
+
+    static SYNTAX_SET: LazyLock<SyntaxSet> = LazyLock::new(SyntaxSet::load_defaults_newlines);
+    static THEME: LazyLock<Theme> = LazyLock::new(|| {
+        let theme_set = ThemeSet::load_defaults();
+        theme_set.themes["InspiredGitHub"].clone()
+    });
+
+    let mut sr = SYNTAX_SET.find_syntax_plain_text();
+    let mut code = String::new();
+    let mut code_block = false;
+
+    let options = Options::ENABLE_TABLES;
+    let callback = |x| broken_link_callback(x, item_provider, context, base);
+    let parser = Parser::new_with_broken_link_callback(&dedented, options, Some(callback));
+
+    parser.filter_map(move |event| {
+        // for now i'm simply not dealing with html in markdown since it requires sanitation and i
+        // don't want to do that lol
+        match event {
+            Event::Html(s) => Some(Event::Text(s)),
+            Event::Start(Tag::Link {
+                link_type,
+                dest_url,
+                title,
+                id,
+            }) => Some(Event::Start(link_process(link_type, dest_url, title, id))),
+
+            Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(lang))) => {
+                let lang = lang.trim();
+                sr = SYNTAX_SET
+                    .find_syntax_by_token(&lang)
+                    .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
+                code_block = true;
+                None
+            }
+            Event::End(TagEnd::CodeBlock) => {
+                let html = highlighted_html_for_string(&code, &SYNTAX_SET, &sr, &THEME)
+                    .unwrap_or(code.clone());
+                code.clear();
+                code_block = false;
+                Some(Event::Html(html.into()))
+            }
+
+            Event::Text(t) => {
+                if code_block {
+                    code.push_str(&t);
+                    return None;
+                }
+                Some(Event::Text(t))
+            }
+
+            e => Some(e),
+        }
+    })
 }
 
 fn broken_link_callback<'a>(
@@ -192,7 +256,7 @@ pub fn render_doc_summary(
                 started: false,
             },
             |state, event| {
-                fn should_stop(tag: &Tag) -> bool {
+                fn should_stop_start(tag: &Tag) -> bool {
                     matches!(
                         tag,
                         Tag::CodeBlock(..)
@@ -202,15 +266,36 @@ pub fn render_doc_summary(
                             | Tag::TableCell
                     )
                 }
-                fn map_tag(tag: Tag) -> Tag {
+                fn should_stop_end(tag: &TagEnd) -> bool {
+                    matches!(
+                        tag,
+                        TagEnd::CodeBlock
+                            | TagEnd::Table
+                            | TagEnd::TableHead
+                            | TagEnd::TableRow
+                            | TagEnd::TableCell
+                    )
+                }
+                fn map_tag_start(tag: Tag) -> Tag {
                     match tag {
                         t @ (Tag::Paragraph
-                        | Tag::BlockQuote
+                        | Tag::BlockQuote(..)
                         | Tag::Item
                         | Tag::Emphasis
                         | Tag::Strong
-                        | Tag::Link(..)) => t,
+                        | Tag::Link { .. }) => t,
                         _ => Tag::Paragraph,
+                    }
+                }
+                fn map_tag_end(tag: TagEnd) -> TagEnd {
+                    match tag {
+                        t @ (TagEnd::Paragraph
+                        | TagEnd::BlockQuote(..)
+                        | TagEnd::Item
+                        | TagEnd::Emphasis
+                        | TagEnd::Strong
+                        | TagEnd::Link) => t,
+                        _ => TagEnd::Paragraph,
                     }
                 }
                 if state.started && state.level == 0 {
@@ -219,18 +304,18 @@ pub fn render_doc_summary(
                 state.started = true;
                 match event {
                     Event::Start(t) => {
-                        if should_stop(&t) {
+                        if should_stop_start(&t) {
                             return None;
                         }
                         state.level += 1;
-                        Some(Event::Start(map_tag(t)))
+                        Some(Event::Start(map_tag_start(t)))
                     }
                     Event::End(t) => {
-                        if should_stop(&t) {
+                        if should_stop_end(&t) {
                             return None;
                         }
                         state.level -= 1;
-                        Some(Event::End(map_tag(t)))
+                        Some(Event::End(map_tag_end(t)))
                     }
                     e => Some(e),
                 }
@@ -240,16 +325,7 @@ pub fn render_doc_summary(
     let html_output = {
         let dedented = textwrap::dedent(text);
 
-        let options = Options::ENABLE_TABLES;
-
-        let mut broken_link_callback = |x| broken_link_callback(x, item_provider, context, base);
-        let parser = Parser::new_with_broken_link_callback(
-            &dedented,
-            options,
-            Some(&mut broken_link_callback),
-        )
-        .map(|x| md_event_map(x, Some((item_provider, context)), base));
-
+        let parser = markdown_transform(&dedented, item_provider, context, base);
         let parser = map(parser);
 
         let mut html_output = String::new();
@@ -280,15 +356,7 @@ fn render_doc_comment(
     let html_output = {
         let dedented = textwrap::dedent(text);
 
-        let options = Options::ENABLE_TABLES;
-
-        let mut broken_link_callback = |x| broken_link_callback(x, item_provider, context, base);
-        let parser = Parser::new_with_broken_link_callback(
-            &dedented,
-            options,
-            Some(&mut broken_link_callback),
-        )
-        .map(|x| md_event_map(x, Some((item_provider, context)), base));
+        let parser = markdown_transform(&dedented, item_provider, context, base);
 
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
