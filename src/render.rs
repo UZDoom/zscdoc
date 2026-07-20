@@ -15,7 +15,8 @@ use axohtml::{
 };
 use itertools::Itertools;
 use pulldown_cmark::{
-    html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag, TagEnd,
+    html, BlockQuoteKind, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, Options, Parser, Tag,
+    TagEnd,
 };
 use syntect::highlighting::{Theme, ThemeSet};
 use syntect::html::highlighted_html_for_string;
@@ -166,17 +167,35 @@ fn markdown_transform<'a, 'b>(
     let callback = |x| broken_link_callback(x, item_provider, context, base);
     let parser = Parser::new_with_broken_link_callback(&dedented, options, Some(callback));
 
-    parser.filter_map(move |event| {
+    parser.flat_map(move |event| {
         // for now i'm simply not dealing with html in markdown since it requires sanitation and i
         // don't want to do that lol
         match event {
-            Event::Html(s) => Some(Event::Text(s)),
+            Event::Html(s) => vec![Event::Text(s)],
             Event::Start(Tag::Link {
                 link_type,
                 dest_url,
                 title,
                 id,
-            }) => Some(Event::Start(link_process(link_type, dest_url, title, id))),
+            }) => vec![Event::Start(link_process(link_type, dest_url, title, id))],
+
+            e @ Event::Start(Tag::BlockQuote(Some(k))) => {
+                let mut result = vec![e];
+                result.push(Event::Html(
+                    format!(
+                        "<p class=\"markdown-alert-title\">{}</p>",
+                        match k {
+                            BlockQuoteKind::Note => "Note",
+                            BlockQuoteKind::Tip => "Tip",
+                            BlockQuoteKind::Important => "Important",
+                            BlockQuoteKind::Warning => "Warning",
+                            BlockQuoteKind::Caution => "Caution",
+                        }
+                    )
+                    .into(),
+                ));
+                result
+            }
 
             Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(lang))) => {
                 let lang = lang.trim();
@@ -184,25 +203,25 @@ fn markdown_transform<'a, 'b>(
                     .find_syntax_by_token(&lang)
                     .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
                 code_block = true;
-                None
+                vec![]
             }
             Event::End(TagEnd::CodeBlock) => {
                 let html = highlighted_html_for_string(&code, &SYNTAX_SET, &sr, &THEME)
                     .unwrap_or(code.clone());
                 code.clear();
                 code_block = false;
-                Some(Event::Html(html.into()))
+                vec![Event::Html(html.into())]
             }
 
             Event::Text(t) => {
                 if code_block {
                     code.push_str(&t);
-                    return None;
+                    return vec![];
                 }
-                Some(Event::Text(t))
+                vec![Event::Text(t)]
             }
 
-            e => Some(e),
+            e => vec![e],
         }
     })
 }

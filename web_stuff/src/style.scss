@@ -36,6 +36,14 @@ $scrollbar_active_fg: #f0ebf5;
 $hr_col: #aaa;
 $horz_divider_col: #ddd;
 
+$blockquote_bg: #f0f0f0;
+$blockquote_bar_fg: #1c1c1c;
+$blockquote_bar_note_fg: #0067c8;
+$blockquote_bar_tip_fg: #007a06;
+$blockquote_bar_important_fg: #8400ff;
+$blockquote_bar_warning_fg: #a35c00;
+$blockquote_bar_caution_fg: #db0000;
+
 code,
 pre {
   font-family: "Source Code Pro", monospace;
@@ -602,6 +610,62 @@ body {
   background-color: $bg;
   height: 100%;
   width: 100%;
+}
+
+.markdown-alert-title {
+  font-weight: bold;
+}
+blockquote {
+  margin-left: 0;
+  margin-right: 0;
+  margin-top: 6px;
+  margin-bottom: 6px;
+  border-color: $blockquote_bar_fg;
+  border-left-width: 0.25em;
+  border-left-style: solid;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  padding-right: 6px;
+  padding-left: 1em;
+  background-color: $blockquote_bg;
+
+  > :first-child {
+    margin-top: 0;
+  }
+  > :last-child {
+    margin-bottom: 0;
+  }
+
+  &.markdown-alert-note {
+    border-color: $blockquote_bar_note_fg;
+    > .markdown-alert-title {
+      color: $blockquote_bar_note_fg;
+    }
+  }
+  &.markdown-alert-tip {
+    border-color: $blockquote_bar_tip_fg;
+    > .markdown-alert-title {
+      color: $blockquote_bar_tip_fg;
+    }
+  }
+  &.markdown-alert-important {
+    border-color: $blockquote_bar_important_fg;
+    > .markdown-alert-title {
+      color: $blockquote_bar_important_fg;
+    }
+  }
+  &.markdown-alert-warning {
+    border-color: $blockquote_bar_warning_fg;
+    > .markdown-alert-title {
+      color: $blockquote_bar_warning_fg;
+    }
+  }
+  &.markdown-alert-caution {
+    border-color: $blockquote_bar_caution_fg;
+    > .markdown-alert-title {
+      color: $blockquote_bar_caution_fg;
+    }
+  }
 }
 
 * {
