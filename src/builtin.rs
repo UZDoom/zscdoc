@@ -29,6 +29,8 @@ pub struct ConstantFromFile {
 #[derive(serde::Deserialize, Debug)]
 pub struct BuiltinTypeFromFile {
     #[serde(skip)]
+    pub(crate) archive: String,
+    #[serde(skip)]
     pub(crate) filename: String,
     name: String,
     doc: String,
@@ -76,15 +78,15 @@ impl BuiltinTypeFromFile {
             uses_things_from: self.uses_things_from,
             members: option_slice_to_slice(self.members.as_deref())
                 .iter()
-                .map(|m| m.produce(files, &self.filename))
+                .map(|m| m.produce(files, &self.archive, &self.filename))
                 .collect::<Result<Vec<_>, _>>()?,
             functions: option_slice_to_slice(self.functions.as_deref())
                 .iter()
-                .map(|m| m.produce(files, &self.filename))
+                .map(|m| m.produce(files, &self.archive, &self.filename))
                 .collect::<Result<Vec<_>, _>>()?,
             constants: option_slice_to_slice(self.constants.as_deref())
                 .iter()
-                .map(|m| m.produce(files, &self.filename))
+                .map(|m| m.produce(files, &self.archive, &self.filename))
                 .collect::<Result<Vec<_>, _>>()?,
         })
     }
@@ -130,9 +132,11 @@ impl MemberVariableFromFile {
     fn produce(
         &self,
         files: &mut Files,
+        archive: &str,
         filename: &str,
     ) -> Result<MemberVariableHir, Vec<ParsingError>> {
         let file = File::new(
+            archive.to_string(),
             filename.to_string() + " member variable",
             self.def.as_bytes().to_vec(),
         );
@@ -161,8 +165,14 @@ impl MemberVariableFromFile {
 }
 
 impl FunctionFromFile {
-    fn produce(&self, files: &mut Files, filename: &str) -> Result<FunctionHir, Vec<ParsingError>> {
+    fn produce(
+        &self,
+        files: &mut Files,
+        archive: &str,
+        filename: &str,
+    ) -> Result<FunctionHir, Vec<ParsingError>> {
         let file = File::new(
+            archive.to_string(),
             filename.to_string() + " function",
             self.def.as_bytes().to_vec(),
         );
@@ -184,8 +194,14 @@ impl FunctionFromFile {
 }
 
 impl ConstantFromFile {
-    fn produce(&self, files: &mut Files, filename: &str) -> Result<ConstantHir, Vec<ParsingError>> {
+    fn produce(
+        &self,
+        files: &mut Files,
+        archive: &str,
+        filename: &str,
+    ) -> Result<ConstantHir, Vec<ParsingError>> {
         let file = File::new(
+            archive.to_string(),
             filename.to_string() + " constant",
             self.def.as_bytes().to_vec(),
         );

@@ -379,6 +379,7 @@ fn get_builtins(files: &[File]) -> anyhow::Result<impl Iterator<Item = BuiltinTy
             let mut builtin: BuiltinTypeFromFile =
                 toml::from_str(f.text()).context("builtin file parsing failed")?;
             builtin.filename = f.filename().to_string();
+            builtin.archive = f.archive().to_string();
             Ok(builtin)
         })
         .collect();
