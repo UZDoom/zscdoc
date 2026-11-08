@@ -127,6 +127,71 @@ struct CopyFileToRender {
     bytes: Vec<u8>,
 }
 
+const SITEMAP_NAMESPACE: &str = "http://www.sitemaps.org/schemas/sitemap/0.9";
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename = "urlset")]
+pub struct Sitemap {
+    #[serde(rename = "@xmlns")]
+    pub xmlns: String,
+    #[serde(rename = "url", default)]
+    pub urls: Vec<SitemapUrl>,
+}
+
+impl Default for Sitemap {
+    fn default() -> Self {
+        Self {
+            xmlns: SITEMAP_NAMESPACE.to_string(),
+            urls: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SitemapUrl {
+    pub loc: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lastmod: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub changefreq: Option<ChangeFrequency>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<f32>,
+}
+
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ChangeFrequency {
+    Always,
+    Hourly,
+    Daily,
+    Weekly,
+    Monthly,
+    Yearly,
+    Never,
+}
+
+fn make_sitemap(canonical_domain: &str, files: &[String]) -> String {
+    let canonical_domain = if canonical_domain.ends_with("/") {
+        canonical_domain.to_string()
+    } else {
+        format!("{canonical_domain}/")
+    };
+    let sitemap = Sitemap {
+        urls: files
+            .iter()
+            .map(|f| SitemapUrl {
+                loc: format!("{canonical_domain}{f}"),
+                lastmod: None,
+                changefreq: None,
+                priority: None,
+            })
+            .collect(),
+        ..Default::default()
+    };
+
+    quick_xml::se::to_string(&sitemap).unwrap()
+}
+
 fn save_docs_to_folder(
     output: &str,
     docs: &structures::Documentation,
@@ -142,6 +207,9 @@ fn save_docs_to_folder(
 ) -> anyhow::Result<()> {
     use std::fs::*;
     use std::io::*;
+
+    let mut html_files_written: Vec<String> = vec![];
+
     let path = std::path::PathBuf::from(output);
     if path.exists() {
         if delete_without_confirm {
@@ -166,6 +234,7 @@ fn save_docs_to_folder(
             .context("Failed to write copy file")?;
     }
     for m in markdown_files {
+        html_files_written.push(m.output_filename.to_string());
         let mut file = File::create(path.join(&*m.output_filename))
             .context("Failed to create markdown file")?;
         file.write_all(
@@ -192,6 +261,7 @@ fn save_docs_to_folder(
             .context("Failed to write asset file")?;
     }
     {
+        html_files_written.push("index.html".to_string());
         let mut file =
             File::create(path.join("index.html")).context("Failed to create index file")?;
 
@@ -211,6 +281,7 @@ fn save_docs_to_folder(
         .context("Failed to write index file")?;
     }
     for class in docs.classes.iter() {
+        html_files_written.push(format!("class.{}.html", class.name));
         let mut file = File::create(path.join(format!("class.{}.html", class.name)))
             .context("Failed to create class file")?;
         file.write_all(
@@ -222,6 +293,7 @@ fn save_docs_to_folder(
         )
         .context("Failed to write class file")?;
         for strukt in class.inner_structs.iter() {
+            html_files_written.push(format!("struct.{}.html", strukt.name));
             let mut file = File::create(path.join(format!("struct.{}.html", strukt.name)))
                 .context("Failed to create class inner struct file")?;
             file.write_all(
@@ -233,6 +305,7 @@ fn save_docs_to_folder(
             )
             .context("Failed to write class inner struct file")?;
             for enm in strukt.inner_enums.iter() {
+                html_files_written.push(format!("enum.{}.html", enm.name));
                 let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))
                     .context("Failed to create class inner struct inner enum file")?;
                 file.write_all(
@@ -246,6 +319,7 @@ fn save_docs_to_folder(
             }
         }
         for enm in class.inner_enums.iter() {
+            html_files_written.push(format!("enum.{}.html", enm.name));
             let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))
                 .context("Failed to create class inner enum file")?;
             file.write_all(
@@ -259,6 +333,7 @@ fn save_docs_to_folder(
         }
     }
     for strukt in docs.structs.iter() {
+        html_files_written.push(format!("struct.{}.html", strukt.name));
         let mut file = File::create(path.join(format!("struct.{}.html", strukt.name)))
             .context("Failed to create struct file")?;
         file.write_all(
@@ -270,6 +345,7 @@ fn save_docs_to_folder(
         )
         .context("Failed to write struct file")?;
         for enm in strukt.inner_enums.iter() {
+            html_files_written.push(format!("enum.{}.html", enm.name));
             let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))
                 .context("Failed to create struct inner enum file")?;
             file.write_all(
@@ -283,6 +359,7 @@ fn save_docs_to_folder(
         }
     }
     for enm in docs.enums.iter() {
+        html_files_written.push(format!("enum.{}.html", enm.name));
         let mut file = File::create(path.join(format!("enum.{}.html", enm.name)))
             .context("Failed to create enum file")?;
         file.write_all(
@@ -295,6 +372,7 @@ fn save_docs_to_folder(
         .context("Failed to write enum file")?;
     }
     for builtin in docs.builtins.iter() {
+        html_files_written.push(format!("builtin.{}.html", builtin.name));
         let mut file = File::create(path.join(format!("builtin.{}.html", builtin.name)))
             .context("Failed to create builtin file")?;
         file.write_all(
@@ -325,6 +403,12 @@ fn save_docs_to_folder(
         let mut file =
             File::create(path.join("favicon.png")).context("Failed to create favicon file")?;
         file.write_all(f).context("Failed to write favicon file")?;
+    }
+    if let Some(c) = canonical_domain {
+        let mut file =
+            File::create(path.join("sitemap.xml")).context("Failed to create sitemap file")?;
+        file.write_all(make_sitemap(&c, &html_files_written).as_bytes())
+            .context("Failed to write sitemap file")?;
     }
     Ok(())
 }
