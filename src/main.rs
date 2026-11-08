@@ -170,17 +170,13 @@ pub enum ChangeFrequency {
     Never,
 }
 
-fn make_sitemap(canonical_domain: &str, files: &[String]) -> String {
-    let canonical_domain = if canonical_domain.ends_with("/") {
-        canonical_domain.to_string()
-    } else {
-        format!("{canonical_domain}/")
-    };
+fn make_sitemap(canonical_domain: &str, base: &BaseUrl, files: &[String]) -> String {
+    let concat_base = canonical_domain.to_string() + &base.filled;
     let sitemap = Sitemap {
         urls: files
             .iter()
             .map(|f| SitemapUrl {
-                loc: format!("{canonical_domain}{f}"),
+                loc: format!("{concat_base}/{f}"),
                 lastmod: None,
                 changefreq: None,
                 priority: None,
@@ -407,7 +403,7 @@ fn save_docs_to_folder(
     if let Some(c) = canonical_domain {
         let mut file =
             File::create(path.join("sitemap.xml")).context("Failed to create sitemap file")?;
-        file.write_all(make_sitemap(&c, &html_files_written).as_bytes())
+        file.write_all(make_sitemap(&c, base, &html_files_written).as_bytes())
             .context("Failed to write sitemap file")?;
     }
     Ok(())
