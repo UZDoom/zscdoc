@@ -181,6 +181,13 @@ export default async () => {
         ) {
             return;
         }
-        remove_search_results();
+        // fix for mobile safari search links not working because of the focus-out handler,
+        // run it on the next event loop and check if the focus hasn't gone back into
+        // the search node
+        setTimeout(() => {
+            if (!search_node.contains(document.activeElement)) {
+                remove_search_results();
+            }
+        }, 0);
     });
 };
