@@ -251,8 +251,39 @@ impl AddToItemProviderWithHir for ClassDefinition {
                 },
             );
         }
+        let mut ancestors = Vec::new();
         let mut cur = self;
+
         loop {
+            ancestors.push(cur);
+
+            let ancestor_id = if let Some(a) = cur.ancestor {
+                a
+            } else {
+                break;
+            };
+
+            let ancestor = hir.definitions.get(&ancestor_id.symbol);
+            let ancestor = if let Some(h) = ancestor {
+                h
+            } else {
+                break;
+            };
+
+            let ancestor = ancestor.iter().find_map(|t| match &t.kind {
+                hir::TopLevelDefinitionKind::Class(c) => Some(c),
+                _ => None,
+            });
+
+            let ancestor = if let Some(h) = ancestor {
+                h
+            } else {
+                break;
+            };
+
+            cur = ancestor;
+        }
+        for cur in ancestors.iter().rev() {
             let name = files.text_from_span(cur.name.span).to_string();
             let link = owner_and(owner, name.clone());
             let owner = Owner::Class(link.clone());
@@ -323,27 +354,6 @@ impl AddToItemProviderWithHir for ClassDefinition {
                     ClassInnerKind::Flag(_) => { /* TODO */ }
                 }
             }
-            let ancestor_id = if let Some(a) = cur.ancestor {
-                a
-            } else {
-                break;
-            };
-            let ancestor = hir.definitions.get(&ancestor_id.symbol);
-            let ancestor = if let Some(h) = ancestor {
-                h
-            } else {
-                break;
-            };
-            let ancestor = ancestor.iter().find_map(|t| match &t.kind {
-                hir::TopLevelDefinitionKind::Class(c) => Some(c),
-                _ => None,
-            });
-            let ancestor = if let Some(h) = ancestor {
-                h
-            } else {
-                break;
-            };
-            cur = ancestor;
         }
     }
 }
